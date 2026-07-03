@@ -1,0 +1,20 @@
+# Fichiers Python compilés
+__pycache__/
+*.pyc
+*.pyo
+
+# Fichiers temporaires Excel (lock files)
+~$*.xlsx
+~$*.xls
+
+# Fichiers Excel de simulation (gros fichiers, optionnel)
+Simulation_Performances_MCP_TES*.xlsx
+
+# Environnements virtuels
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
