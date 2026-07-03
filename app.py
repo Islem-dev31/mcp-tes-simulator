@@ -299,10 +299,10 @@ with st.sidebar.expander("Paramètres Techniques & CAO Avancés", expanded=False
     )
     
     st.markdown("**Données opérationnelles :**")
-    door_openings = st.number_input("Ouvertures de porte par heure", value=4.0, step=1.0)
-    door_duration = st.number_input("Durée d'ouverture (sec)", value=30.0, step=5.0)
-    stock_vol = st.number_input("Volume du stock (L)", value=20000.0, step=1000.0)
-    stock_turn = st.slider("Rotation stock quotidien (%)", min_value=0, max_value=100, value=10) / 100.0
+    door_openings = st.number_input("Ouvertures de porte par heure", value=config.N_OPENINGS_PER_HOUR, step=1.0)
+    door_duration = st.number_input("Durée d'ouverture (sec)", value=config.T_OPENING, step=5.0)
+    stock_vol = st.number_input("Volume du stock (L)", value=config.STOCK_VOLUME, step=1000.0)
+    stock_turn = st.slider("Rotation stock quotidien (%)", min_value=0, max_value=100, value=int(config.STOCK_TURNOVER * 100)) / 100.0
     
     st.markdown("**Gestion des Risques & Pannes :**")
     outages_per_year = st.number_input("Coupures / Pannes Sonelgaz par an", value=3.0, step=1.0)
@@ -326,13 +326,43 @@ with st.sidebar.expander("Paramètres Techniques & CAO Avancés", expanded=False
 # 2. LOGIQUE THERMODYNAMIQUE & CALCUL DE CHARGE
 # ==============================================================================
 
-# Calcul géométrique de la chambre
-height = 4.0
+# Calcul géométrique réaliste de la hauteur en fonction du volume (Q8)
+if volume < 50.0:
+    height = 3.0
+elif volume < 200.0:
+    height = 4.0
+else:
+    height = 5.0
+    
 area_floor = volume / height
 side_length = math.sqrt(area_floor)
 a_env = 2.0 * area_floor + 4.0 * side_length * height
 
-rh_ext = 60.0
+# Charge thermique interne statique indexée sur le volume de la chambre (Q6)
+q_internal_static = 50.0 + 1.0 * volume
+
+# Dimensionnement de porte réaliste basé sur le volume (Q10)
+if volume < 50.0:
+    w_door = 1.0
+    h_door = 2.0
+elif volume < 200.0:
+    w_door = 1.4
+    h_door = 2.2
+else:
+    w_door = 2.0
+    h_door = 2.5
+
+# Humidité relative extérieure dynamique selon le climat de la wilaya (Q7)
+desc_lower = city_data.get("desc", "").lower()
+if "littoral" in desc_lower or "côtier" in desc_lower:
+    rh_ext = 75.0
+elif "sud" in desc_lower or "saharien" in desc_lower or "désertique" in desc_lower:
+    rh_ext = 25.0
+elif "plateaux" in desc_lower or "continental" in desc_lower:
+    rh_ext = 45.0
+else:
+    rh_ext = 60.0
+    
 rh_int = 90.0 if t_target >= 0 else 95.0
 
 def get_air_density(temp_c):
@@ -364,7 +394,7 @@ rho_ext = get_air_density(t_ext)
 rho_int = get_air_density(t_target)
 rho_avg = (rho_ext + rho_int) / 2.0
 delta_rho = max(0.0, rho_int - rho_ext)
-m_dot_air = (2.0 / 3.0) * config.C_D * config.W_DOOR * (config.H_DOOR ** 1.5) * math.sqrt(config.G * delta_rho / rho_avg) if delta_rho > 0 else 0
+m_dot_air = (2.0 / 3.0) * config.C_D * w_door * (h_door ** 1.5) * math.sqrt(config.G * delta_rho / rho_avg) if delta_rho > 0 else 0
 h_ext = get_air_enthalpy(t_ext, rh_ext)
 h_int = get_air_enthalpy(t_target, rh_int)
 delta_h = max(0.0, h_ext - h_int)
@@ -377,7 +407,7 @@ t_in_product = t_ext - config.T_IN_PRODUCT_OFFSET
 q_product = max(0.0, (m_turnover * config.CP_PRODUCT * (t_in_product - t_target)) / (24.0 * 3600.0))
 
 # Charge totale pour la période sélectionnée (affichage et simulation locale)
-q_load_total = q_wall + q_infiltration + q_product + config.Q_INTERNAL_STATIC
+q_load_total = q_wall + q_infiltration + q_product + q_internal_static
 
 # --- CALCUL DE LA CHARGE DE CONCEPTION (Pointe d'été de la wilaya, pour le dimensionnement physique) ---
 t_ext_summer = city_data["design_summer"]
@@ -386,7 +416,7 @@ q_wall_summer = max(0.0, (1.0 / ((1.0 / config.H_INT_WALL) + (thickness_pu / con
 rho_ext_summer = get_air_density(t_ext_summer)
 rho_avg_summer = (rho_ext_summer + rho_int) / 2.0
 delta_rho_summer = max(0.0, rho_int - rho_ext_summer)
-m_dot_air_summer = (2.0 / 3.0) * config.C_D * config.W_DOOR * (config.H_DOOR ** 1.5) * math.sqrt(config.G * delta_rho_summer / rho_avg_summer) if delta_rho_summer > 0 else 0
+m_dot_air_summer = (2.0 / 3.0) * config.C_D * w_door * (h_door ** 1.5) * math.sqrt(config.G * delta_rho_summer / rho_avg_summer) if delta_rho_summer > 0 else 0
 h_ext_summer = get_air_enthalpy(t_ext_summer, rh_ext)
 delta_h_summer = max(0.0, h_ext_summer - h_int)
 q_infiltration_summer = m_dot_air_summer * delta_h_summer * d_open
@@ -394,7 +424,7 @@ q_infiltration_summer = m_dot_air_summer * delta_h_summer * d_open
 t_in_product_summer = t_ext_summer - config.T_IN_PRODUCT_OFFSET
 q_product_summer = max(0.0, (m_turnover * config.CP_PRODUCT * (t_in_product_summer - t_target)) / (24.0 * 3600.0))
 
-q_load_summer_peak = q_wall_summer + q_infiltration_summer + q_product_summer + config.Q_INTERNAL_STATIC
+q_load_summer_peak = q_wall_summer + q_infiltration_summer + q_product_summer + q_internal_static
 
 # --- CALCUL DE LA CHARGE THERMIQUE MOYENNE ANNUELLE (Pour les gains financiers réels) ---
 t_ext_mean = city_data["avg_annual"]
@@ -403,7 +433,7 @@ q_wall_mean = max(0.0, (1.0 / ((1.0 / config.H_INT_WALL) + (thickness_pu / confi
 rho_ext_mean = get_air_density(t_ext_mean)
 rho_avg_mean = (rho_ext_mean + rho_int) / 2.0
 delta_rho_mean = max(0.0, rho_int - rho_ext_mean)
-m_dot_air_mean = (2.0 / 3.0) * config.C_D * config.W_DOOR * (config.H_DOOR ** 1.5) * math.sqrt(config.G * delta_rho_mean / rho_avg_mean) if delta_rho_mean > 0 else 0
+m_dot_air_mean = (2.0 / 3.0) * config.C_D * w_door * (h_door ** 1.5) * math.sqrt(config.G * delta_rho_mean / rho_avg_mean) if delta_rho_mean > 0 else 0
 h_ext_mean = get_air_enthalpy(t_ext_mean, rh_ext)
 delta_h_mean = max(0.0, h_ext_mean - h_int)
 q_infiltration_mean = m_dot_air_mean * delta_h_mean * d_open
@@ -411,7 +441,7 @@ q_infiltration_mean = m_dot_air_mean * delta_h_mean * d_open
 t_in_product_mean = t_ext_mean - config.T_IN_PRODUCT_OFFSET
 q_product_mean = max(0.0, (m_turnover * config.CP_PRODUCT * (t_in_product_mean - t_target)) / (24.0 * 3600.0))
 
-q_load_mean = max(0.0, q_wall_mean + q_infiltration_mean + q_product_mean + config.Q_INTERNAL_STATIC)
+q_load_mean = max(0.0, q_wall_mean + q_infiltration_mean + q_product_mean + q_internal_static)
 
 # Énergie requise et masse de MCP de base (basé sur la charge de pointe pour la sécurité de dimensionnement)
 e_required_joules = q_load_summer_peak * autonomy_target * 3600.0
@@ -507,7 +537,9 @@ for d_cyl_mm in dia_opts:
                 # Économie d'énergie Sonelgaz (DA/an) - Arbitrage (basé sur la charge MOYENNE ANNUELLE pour la crédibilité du ROI)
                 p_elec_saved = q_load_mean / (cop * 1000.0)
                 e_saved_daily = p_elec_saved * t_autonomy_mean
-                economie_arbitrage_da = (e_saved_daily * config.DELTA_TARIF_DA_KWH * config.DAYS_OP_YEAR) + config.PRIME_FIXE_SAVINGS_DA
+                # Prime d'économie Sonelgaz indexée sur la taille du système (Q21)
+                prime_savings_da = 10000.0 + 700.0 * volume
+                economie_arbitrage_da = (e_saved_daily * config.DELTA_TARIF_DA_KWH * config.DAYS_OP_YEAR) + prime_savings_da
                 
                 # Économie sur perte de marchandise évitée (DA/an) - Sécurité
                 fraction_protection = min(1.0, t_autonomy_mean / autonomy_target)
@@ -524,6 +556,57 @@ for d_cyl_mm in dia_opts:
                 # Coût de sensibilité (+20% Alu)
                 cout_sens = cout_total + (m_al_total * 0.20 * config.PRIX_AL_BASE)
                 payback_years_sens = cout_sens / economie_annuelle_da if economie_annuelle_da > 0 else 99.0
+                
+                # Calcul de la VAN (NPV) sur 10 ans avec taux d'actualisation de 8% et inflation énergie de 5% (Q23)
+                # Coût annuel de maintenance de 2% de l'investissement initial
+                van = -cout_total
+                if economie_annuelle_da > 0:
+                    for year in range(1, 11):
+                        cf_year = economie_annuelle_da * ((1.05) ** year) - 0.02 * cout_total
+                        van += cf_year / ((1.08) ** year)
+                else:
+                    van = -cout_total
+                    
+                # Calcul du TRI (IRR) actualisé sur 10 ans par méthode de bissection
+                irr = -100.0  # Valeur par défaut si non rentable
+                if economie_annuelle_da > 0:
+                    def get_npv(r):
+                        npv_val = -cout_total
+                        for year in range(1, 11):
+                            cf_year = economie_annuelle_da * ((1.05) ** year) - 0.02 * cout_total
+                            npv_val += cf_year / ((1.0 + r) ** year)
+                        return npv_val
+                    
+                    low, high = -0.5, 3.0
+                    if get_npv(low) > 0 and get_npv(high) < 0:
+                        for _ in range(30):
+                            mid = (low + high) / 2.0
+                            mid_npv = get_npv(mid)
+                            if abs(mid_npv) < 1e-2:
+                                irr = mid * 100.0
+                                break
+                            if mid_npv > 0:
+                                low = mid
+                            else:
+                                high = mid
+                        else:
+                            irr = mid * 100.0
+                    elif get_npv(low) <= 0:
+                        irr = -50.0  # Totalement non rentable
+                    else:
+                        irr = 300.0  # Rentabilité exceptionnellement élevée
+                
+                # Calcul de l'encombrement au plafond (Q19)
+                # Chaque cylindre a une largeur de d_cyl + 60mm d'ailettes + 50mm d'espacement de sécurité
+                # Et une longueur utile l_cyl
+                area_proj_single = (d_cyl + 0.11) * l_cyl
+                ceiling_occupancy_pct = (math.ceil(n_modules) * area_proj_single) / area_floor * 100.0
+                
+                # Calcul du nombre de suspentes M10 requises (Q20)
+                # Charge max autorisée de 300 kg par suspente avec un coefficient de sécurité de 3
+                # Poids total = masse aluminium + masse MCP avec marge de dilatation
+                total_mass_kg = m_al_total + m_pcm_required * 1.10
+                n_suspentes = math.ceil(total_mass_kg / 300.0)
                 
                 # Score d'optimisation basé sur la performance d'été (garantissant un choix robuste)
                 score_da = t_autonomy_summer / cout_total if cout_total > 0 else 0
@@ -548,6 +631,10 @@ for d_cyl_mm in dia_opts:
                     "Savings_Yearly_DA": economie_annuelle_da,
                     "Payback_Years": payback_years,
                     "Payback_Years_Sens": payback_years_sens,
+                    "VAN_DA": van,
+                    "TRI_Percent": irr,
+                    "Ceiling_Occupancy_Pct": ceiling_occupancy_pct,
+                    "N_Suspentes": n_suspentes,
                     "P_Recharge_Needed_kW": p_recharge_needed_kw,
                     "P_Compressor_Est_kW": compressor_power_kw,
                     "Recharge_Feasible": recharge_feasible,
@@ -559,8 +646,15 @@ df_sim = pd.DataFrame(results_list)
 # Filtrer par rapport au budget max
 df_filtered = df_sim[df_sim["Cost_DA"] <= budget_max]
 
-# Tri pour obtenir les meilleures configurations
-df_sorted = df_filtered.sort_values(by="Optimization_Score_h_DA", ascending=False).reset_index(drop=True)
+# Filtrage à deux étapes pour prioriser les configurations rechargeables avec le compresseur existant (Q1)
+df_recharge_ok = df_filtered[df_filtered["Recharge_Feasible"] == "OUI"]
+if not df_recharge_ok.empty:
+    df_sorted = df_recharge_ok.sort_values(by="Optimization_Score_h_DA", ascending=False).reset_index(drop=True)
+    recharge_fallback_active = False
+else:
+    # Si aucune configuration n'est faisable dans le budget, on fallback sur toutes les configurations
+    df_sorted = df_filtered.sort_values(by="Optimization_Score_h_DA", ascending=False).reset_index(drop=True)
+    recharge_fallback_active = True
 
 
 # ==============================================================================
@@ -631,15 +725,22 @@ else:
             * **Longueur utile d'un cylindre** : `{best_conf['L_Cyl_m']} m`
             * **Ailettes externes** : `{best_conf['N_Fins']} ailettes` en étoile (épaisseur `1.5 mm`, hauteur `30 mm`)
             * **Type de ventilation** : Ventilation Active **{best_conf['Ventilation']}**
+            * **Dimensionnement de la porte** : `{w_door:.1f} m x {h_door:.1f} m` (Adapté au volume de la chambre)
             """)
             
         with col_dims2:
+            occupancy_style = "color:#E74C3C; font-weight:bold;" if best_conf['Ceiling_Occupancy_Pct'] > 100.0 else "color:#2ECC71;"
             st.success(f"""
             * **Masse totale d'Aluminium** : `{best_conf['M_Al_Total_kg']:,.1f} kg` (Poids propre de la structure métallique)
             * **Volume liquide MCP requis** : `{best_conf['M_PCM_Required_kg'] * 1.10 / config.RHO_PCM * 1000:,.1f} Litres` (dilaté à 10%)
             * **Ciel gazeux (sécurité dilatation)** : `{empty_space_opt} %`
+            * **Points d'ancrage requis (suspentes M10)** : `{int(best_conf['N_Suspentes'])} suspentes` (Charge max 300kg/tige)
+            * **Encombrement au plafond** : <span style="{occupancy_style}">{best_conf['Ceiling_Occupancy_Pct']:.1f} %</span> de la surface de plafond
             * **Besoin Frigorifique de Pointe** : `{q_load_total:,.1f} W` (Pertes: `{q_wall:,.0f}W` Parois, `{q_infiltration:,.0f}W` Infiltrations, `{q_product:,.0f}W` Produit)
-            """)
+            """, unsafe_allow_html=True)
+            
+        if best_conf['Ceiling_Occupancy_Pct'] > 100.0:
+            st.warning("⚠️ **Encombrement plafond élevé (> 100%)** : Le nombre requis de modules dépasse la surface plane disponible au plafond en une seule couche. Une disposition sur plusieurs niveaux superposés ou une réduction de l'autonomie cible est fortement préconisée.")
             
         # Section de Faisabilité de Recharge Nocturne (HCD / Rigueur Scientifique)
         st.markdown("#### <i class='fa-solid fa-bolt' style='color:#1B365D; margin-right:8px;'></i> Faisabilité de la Recharge Nocturne (Solidification)", unsafe_allow_html=True)
@@ -758,32 +859,42 @@ else:
         
         col_pay1, col_pay2 = st.columns(2)
         with col_pay1:
+            irr_val = f"{best_conf['TRI_Percent']:.1f} %" if best_conf['TRI_Percent'] > -50.0 else "Non rentable"
             st.markdown(f"""
-            ##### <i class='fa-solid fa-chart-line' style='color:#1B365D;'></i> Retour sur Investissement Global
+            ##### <i class='fa-solid fa-chart-line' style='color:#1B365D;'></i> Indicateurs de Retour sur Investissement
             * **Économies Totales** : `{best_conf['Savings_Yearly_DA']:,.0f} DA / an`
-            * **Temps de Retour sur Investissement (TRI)** : **`{best_conf['Payback_Years']:.2f} ans`**
+            * **Temps de Retour Simple** : **`{best_conf['Payback_Years']:.2f} ans`**
+            * **Taux de Rentabilité Interne (TRI actualisé sur 10 ans)** : **`{irr_val}`**
             """, unsafe_allow_html=True)
         with col_pay2:
+            van_status = "<span style='color:#2ECC71; font-weight:bold;'>(Projet Viable ✅)</span>" if best_conf['VAN_DA'] > 0 else "<span style='color:#E74C3C; font-weight:bold;'>(Non viable financièrement ❌)</span>"
             st.markdown(f"""
-            ##### <i class='fa-solid fa-scale-unbalanced' style='color:#E74C3C;'></i> Sensibilité au prix de l'Aluminium (+20%)
-            * **Nouveau Coût Total** : `{best_conf['Cost_Sens_DA']:,.0f} DA`
-            * **TRI Ajusté** : **`{best_conf['Payback_Years_Sens']:.2f} ans`**
+            ##### <i class='fa-solid fa-scale-unbalanced' style='color:#E74C3C;'></i> Valeur Actuelle Nette & Sensibilité
+            * **Valeur Actuelle Nette (VAN sur 10 ans @ 8%)** : **`{best_conf['VAN_DA']:,.0f} DA`** {van_status}
+            * **Sensibilité au prix de l'Aluminium (+20%)** :
+              * **Nouveau Coût Total** : `{best_conf['Cost_Sens_DA']:,.0f} DA`
+              * **Payback Simple Ajusté** : **`{best_conf['Payback_Years_Sens']:.2f} ans`**
             """, unsafe_allow_html=True)
             
-        st.markdown("#### <i class='fa-solid fa-chart-area' style='color:#1B365D; margin-right:8px;'></i> Fluctuation du TRI face au prix d'achat de l'Aluminium", unsafe_allow_html=True)
-        alu_prices = np.linspace(1000.0, 3000.0, 10)
-        paybacks = []
-        for p in alu_prices:
-            cost_temp = (best_conf["M_Al_Total_kg"] * p) + (best_conf["M_PCM_Required_kg"] * config.PRIX_MCP_BASE) + (best_conf["N_Modules"] * config.COUT_FAB_CYL)
-            if best_conf["Ventilation"] == "ON":
-                cost_temp += config.SURCOUT_VENTILATION
-            paybacks.append(cost_temp / best_conf["Savings_Yearly_DA"])
-            
-        df_sens = pd.DataFrame({
-            "Prix Aluminium": np.round(alu_prices).astype(int),
-            "TRI Estime": paybacks
-        })
-        st.line_chart(df_sens, x="Prix Aluminium", y="TRI Estime")
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+        
+        if best_conf["Savings_Yearly_DA"] <= 0:
+            st.warning("⚠️ Les économies annuelles générées sont nulles ou négatives pour cette configuration. Le temps de retour sur investissement est infini.")
+        else:
+            st.markdown("#### <i class='fa-solid fa-chart-area' style='color:#1B365D; margin-right:8px;'></i> Sensibilité : Fluctuation du Temps de Retour face au prix d'achat de l'Aluminium", unsafe_allow_html=True)
+            alu_prices = np.linspace(1000.0, 3000.0, 10)
+            paybacks = []
+            for p in alu_prices:
+                cost_temp = (best_conf["M_Al_Total_kg"] * p) + (best_conf["M_PCM_Required_kg"] * config.PRIX_MCP_BASE) + (best_conf["N_Modules"] * config.COUT_FAB_CYL)
+                if best_conf["Ventilation"] == "ON":
+                    cost_temp += config.SURCOUT_VENTILATION
+                paybacks.append(cost_temp / best_conf["Savings_Yearly_DA"])
+                
+            df_sens = pd.DataFrame({
+                "Prix Aluminium (DA/kg)": np.round(alu_prices).astype(int),
+                "Temps de Retour Simple (ans)": paybacks
+            })
+            st.line_chart(df_sens, x="Prix Aluminium (DA/kg)", y="Temps de Retour Simple (ans)")
 
     # --- ONGLET 3: RAPPORT D'ÉTUDE THERMIQUE & MÉTHODOLOGIE ---
     with tab3:
@@ -859,9 +970,9 @@ else:
             
         st.markdown("<hr style='margin: 20px 0;'>", unsafe_allow_html=True)
         
-        # Section 4 : Hypothèses Simplificatrices & Réponses aux Questions Clés du Jury (Q&A)
-        st.markdown("#### 4. Hypothèses Simplificatrices & Validation Technique (Q&A Jury)")
-        st.write("Retrouvez ci-dessous la justification des choix de modélisation face aux questions les plus pointues du jury :")
+        # Section 4 : Validation Scientifique & Guide de Soutenance Technique (FAQ/Q&A)
+        st.markdown("#### 4. Validation Scientifique & Guide de Soutenance Technique (FAQ/Q&A)", unsafe_allow_html=True)
+        st.write("Retrouvez ci-dessous la justification rigoureuse de nos choix de modélisation physique et économique :")
         
         with st.expander("Q1 : Pourquoi appliquer une double marge sur le volume et la masse du MCP ?", expanded=False):
             st.markdown("""
@@ -911,7 +1022,7 @@ else:
         df_db_display = df_db_display[[
             "D_Cyl_mm", "N_Fins", "Ventilation", "L_Cyl_m", "Q_Load_Total_W", 
             "M_PCM_Required_kg", "M_Al_Total_kg", "Autonomy_Real_h", "N_Modules", 
-            "Cost_DA", "Payback_Years"
+            "Cost_DA", "Payback_Years", "VAN_DA", "TRI_Percent", "Ceiling_Occupancy_Pct", "N_Suspentes"
         ]].rename(columns={
             "D_Cyl_mm": "Dia (mm)",
             "N_Fins": "Fins",
@@ -920,16 +1031,24 @@ else:
             "Q_Load_Total_W": "Charge (W)",
             "M_PCM_Required_kg": "MCP (kg)",
             "M_Al_Total_kg": "Alu (kg)",
-            "Autonomie (h)": "Autonomie (h)",
+            "Autonomy_Real_h": "Autonomie (h)",
             "N_Modules": "Nb Cylindres",
             "Cost_DA": "Coût (DA)",
-            "Payback_Years": "TRI (ans)"
+            "Payback_Years": "Payback Simple (ans)",
+            "VAN_DA": "VAN (DA)",
+            "TRI_Percent": "TRI actualisé (%)",
+            "Ceiling_Occupancy_Pct": "Occ. Plafond (%)",
+            "N_Suspentes": "Nb Suspentes"
         })
         
         st.dataframe(df_db_display.style.format({
             "Coût (DA)": "{:,.0f} DA",
             "MCP (kg)": "{:,.1f}",
             "Alu (kg)": "{:,.1f}",
-            "Autonomie (h)": "{:.2f}",
-            "TRI (ans)": "{:.2f}"
+            "Autonomie (h)": "{:.2f} h",
+            "Payback Simple (ans)": "{:.2f} ans",
+            "VAN (DA)": "{:,.0f} DA",
+            "TRI actualisé (%)": "{:.1f} %",
+            "Occ. Plafond (%)": "{:.1f} %",
+            "Nb Suspentes": "{:d}"
         }), width="stretch")
