@@ -308,6 +308,18 @@ with st.sidebar.expander("Paramètres Techniques & CAO Avancés", expanded=False
     outages_per_year = st.number_input("Coupures / Pannes Sonelgaz par an", value=3.0, step=1.0)
     stock_value_da = st.number_input("Valeur du stock protégé (DA)", value=float(volume * 20000.0), step=50000.0)
     loss_prevented_pct = st.slider("Pertes évitées grâce au MCP (%)", min_value=0, max_value=100, value=100) / 100.0
+    
+    st.markdown("**Gestion de la Recharge Nocturne :**")
+    compressor_power_kw = st.number_input(
+        "Puissance du compresseur existant (kW)",
+        min_value=1.0, max_value=500.0, value=15.0, step=1.0,
+        help="Puissance frigorifique nominale du compresseur du client."
+    )
+    t_recharge_h = st.slider(
+        "Heures creuses pour recharge (h)",
+        min_value=4.0, max_value=12.0, value=8.0, step=0.5,
+        help="Durée disponible la nuit pour recharger/re-solidifier le MCP."
+    )
 
 
 # ==============================================================================
@@ -345,7 +357,7 @@ def get_air_enthalpy(temp_c, rh_percent):
     return config.CP_AIR * temp_c + w * (2501000.0 + 1860.0 * temp_c)
 
 # Pertes parois
-q_wall = (1.0 / ((1.0 / config.H_INT_WALL) + (thickness_pu / config.LAMBDA_PU) + (1.0 / config.H_EXT_WALL))) * a_env * (t_ext - t_target)
+q_wall = max(0.0, (1.0 / ((1.0 / config.H_INT_WALL) + (thickness_pu / config.LAMBDA_PU) + (1.0 / config.H_EXT_WALL))) * a_env * (t_ext - t_target))
 
 # Infiltration porte
 rho_ext = get_air_density(t_ext)
@@ -364,12 +376,29 @@ m_turnover = stock_vol * stock_turn
 t_in_product = t_ext - config.T_IN_PRODUCT_OFFSET
 q_product = max(0.0, (m_turnover * config.CP_PRODUCT * (t_in_product - t_target)) / (24.0 * 3600.0))
 
-# Charge totale (pour le dimensionnement de pointe)
+# Charge totale pour la période sélectionnée (affichage et simulation locale)
 q_load_total = q_wall + q_infiltration + q_product + config.Q_INTERNAL_STATIC
+
+# --- CALCUL DE LA CHARGE DE CONCEPTION (Pointe d'été de la wilaya, pour le dimensionnement physique) ---
+t_ext_summer = city_data["design_summer"]
+q_wall_summer = max(0.0, (1.0 / ((1.0 / config.H_INT_WALL) + (thickness_pu / config.LAMBDA_PU) + (1.0 / config.H_EXT_WALL))) * a_env * (t_ext_summer - t_target))
+
+rho_ext_summer = get_air_density(t_ext_summer)
+rho_avg_summer = (rho_ext_summer + rho_int) / 2.0
+delta_rho_summer = max(0.0, rho_int - rho_ext_summer)
+m_dot_air_summer = (2.0 / 3.0) * config.C_D * config.W_DOOR * (config.H_DOOR ** 1.5) * math.sqrt(config.G * delta_rho_summer / rho_avg_summer) if delta_rho_summer > 0 else 0
+h_ext_summer = get_air_enthalpy(t_ext_summer, rh_ext)
+delta_h_summer = max(0.0, h_ext_summer - h_int)
+q_infiltration_summer = m_dot_air_summer * delta_h_summer * d_open
+
+t_in_product_summer = t_ext_summer - config.T_IN_PRODUCT_OFFSET
+q_product_summer = max(0.0, (m_turnover * config.CP_PRODUCT * (t_in_product_summer - t_target)) / (24.0 * 3600.0))
+
+q_load_summer_peak = q_wall_summer + q_infiltration_summer + q_product_summer + config.Q_INTERNAL_STATIC
 
 # --- CALCUL DE LA CHARGE THERMIQUE MOYENNE ANNUELLE (Pour les gains financiers réels) ---
 t_ext_mean = city_data["avg_annual"]
-q_wall_mean = (1.0 / ((1.0 / config.H_INT_WALL) + (thickness_pu / config.LAMBDA_PU) + (1.0 / config.H_EXT_WALL))) * a_env * (t_ext_mean - t_target)
+q_wall_mean = max(0.0, (1.0 / ((1.0 / config.H_INT_WALL) + (thickness_pu / config.LAMBDA_PU) + (1.0 / config.H_EXT_WALL))) * a_env * (t_ext_mean - t_target))
 
 rho_ext_mean = get_air_density(t_ext_mean)
 rho_avg_mean = (rho_ext_mean + rho_int) / 2.0
@@ -385,7 +414,7 @@ q_product_mean = max(0.0, (m_turnover * config.CP_PRODUCT * (t_in_product_mean -
 q_load_mean = max(0.0, q_wall_mean + q_infiltration_mean + q_product_mean + config.Q_INTERNAL_STATIC)
 
 # Énergie requise et masse de MCP de base (basé sur la charge de pointe pour la sécurité de dimensionnement)
-e_required_joules = q_load_total * autonomy_target * 3600.0
+e_required_joules = q_load_summer_peak * autonomy_target * 3600.0
 m_pcm_required = e_required_joules / config.L_F
 
 # COP et fusion
@@ -405,6 +434,10 @@ results_list = []
 for d_cyl_mm in dia_opts:
     d_cyl = d_cyl_mm / 1000.0
     for n_fins in fins_opts:
+        # Exclure les configurations de 8 ailettes pour les diamètres < 100mm pour respecter le critère anti-givre (espacement min 50mm)
+        if n_fins == 8 and d_cyl_mm < 100:
+            continue
+            
         current_fin_thickness = 0.0 if n_fins == 0 else t_fin
         for vent in vent_opts:
             for l_cyl in len_opts:
@@ -442,22 +475,29 @@ for d_cyl_mm in dia_opts:
                     continue
                 m_pcm_per_meter = a_pcm_cross * config.RHO_PCM
                 
-                total_length_needed = m_pcm_required / m_pcm_per_meter
-                ua_battery = total_length_needed / r_linear
+                # Longueur physique totale des cylindres (incluant la marge de dilatation thermique et le ciel gazeux)
+                total_length_physical = (m_pcm_required * 1.10) / (m_pcm_per_meter * (1.0 - empty_space_opt / 100.0))
+                
+                ua_battery = total_length_physical / r_linear
                 q_battery_max = ua_battery * delta_t_driving
                 
                 a_al_cross = (math.pi * (d_cyl**2 - d_inner**2) / 4.0) + n_fins * current_fin_thickness * (l_fin_ext + l_fin_int)
-                m_al_total = a_al_cross * config.RHO_AL * total_length_needed
+                m_al_total = a_al_cross * config.RHO_AL * total_length_physical
                 
-                thermal_effectiveness = min(1.0, q_battery_max / q_load_total)
-                t_autonomy_real = autonomy_target * thermal_effectiveness
+                # Autonomie sous le pic de charge estival (dimensionnement physique & optimisation)
+                thermal_effectiveness_summer = min(1.0, q_battery_max / q_load_summer_peak)
+                t_autonomy_summer = autonomy_target * thermal_effectiveness_summer
                 
-                # Remplissage
-                m_pcm_dilated = m_pcm_required * 1.10
-                v_pcm_dilated = m_pcm_dilated / config.RHO_PCM
-                v_cyl = math.pi * (d_cyl / 2.0)**2 * l_cyl
-                v_cyl_effective = v_cyl * (1.0 - empty_space_opt / 100.0)
-                n_modules = v_pcm_dilated / v_cyl_effective
+                # Autonomie sous la charge de la période sélectionnée (affichage & simulation locale)
+                thermal_effectiveness_selected = min(1.0, q_battery_max / q_load_total)
+                t_autonomy_selected = autonomy_target * thermal_effectiveness_selected
+                
+                # Autonomie sous la charge moyenne annuelle (calcul de rentabilité économique réelle)
+                thermal_effectiveness_mean = min(1.0, q_battery_max / q_load_mean)
+                t_autonomy_mean = autonomy_target * thermal_effectiveness_mean
+                
+                # Nombre de cylindres (parfaitement cohérent avec la longueur physique totale construite)
+                n_modules = total_length_physical / l_cyl
                 
                 # Coût total
                 cout_total = (m_al_total * config.PRIX_AL_BASE) + (m_pcm_required * config.PRIX_MCP_BASE) + (n_modules * config.COUT_FAB_CYL)
@@ -466,21 +506,18 @@ for d_cyl_mm in dia_opts:
                     
                 # Économie d'énergie Sonelgaz (DA/an) - Arbitrage (basé sur la charge MOYENNE ANNUELLE pour la crédibilité du ROI)
                 p_elec_saved = q_load_mean / (cop * 1000.0)
-                e_saved_daily = p_elec_saved * t_autonomy_real
+                e_saved_daily = p_elec_saved * t_autonomy_mean
                 economie_arbitrage_da = (e_saved_daily * config.DELTA_TARIF_DA_KWH * config.DAYS_OP_YEAR) + config.PRIME_FIXE_SAVINGS_DA
                 
                 # Économie sur perte de marchandise évitée (DA/an) - Sécurité
-                fraction_protection = min(1.0, t_autonomy_real / autonomy_target)
+                fraction_protection = min(1.0, t_autonomy_mean / autonomy_target)
                 economie_pannes_da = outages_per_year * stock_value_da * loss_prevented_pct * fraction_protection
                 
                 economie_annuelle_da = economie_arbitrage_da + economie_pannes_da
                 
-                # Faisabilité de la recharge nocturne (durée heures creuses = 8h en Algérie)
-                t_recharge_h = 8.0
+                # Faisabilité de la recharge nocturne (basé sur les heures creuses et le compresseur de l'utilisateur)
                 p_recharge_needed_kw = (m_pcm_required * config.L_F) / (t_recharge_h * 3600.0 * 1000.0)
-                # Puissance frigorifique nominale estimée du compresseur existant (charge de pointe * coef de sécurité 1.3)
-                p_compressor_est_kw = (q_load_total * 1.3) / 1000.0
-                recharge_feasible = "OUI" if p_recharge_needed_kw <= p_compressor_est_kw else "NON"
+                recharge_feasible = "OUI" if p_recharge_needed_kw <= compressor_power_kw else "NON"
                 
                 payback_years = cout_total / economie_annuelle_da if economie_annuelle_da > 0 else 99.0
                 
@@ -488,7 +525,8 @@ for d_cyl_mm in dia_opts:
                 cout_sens = cout_total + (m_al_total * 0.20 * config.PRIX_AL_BASE)
                 payback_years_sens = cout_sens / economie_annuelle_da if economie_annuelle_da > 0 else 99.0
                 
-                score_da = t_autonomy_real / cout_total if cout_total > 0 else 0
+                # Score d'optimisation basé sur la performance d'été (garantissant un choix robuste)
+                score_da = t_autonomy_summer / cout_total if cout_total > 0 else 0
                 
                 results_list.append({
                     "D_Cyl_mm": d_cyl_mm,
@@ -498,7 +536,10 @@ for d_cyl_mm in dia_opts:
                     "Q_Load_Total_W": q_load_total,
                     "M_PCM_Required_kg": m_pcm_required,
                     "M_Al_Total_kg": m_al_total,
-                    "Autonomy_Real_h": t_autonomy_real,
+                    "Autonomy_Real_h": t_autonomy_selected,
+                    "Autonomy_Summer_h": t_autonomy_summer,
+                    "Autonomy_Mean_h": t_autonomy_mean,
+                    "R_Linear": r_linear,
                     "N_Modules": math.ceil(n_modules),
                     "Cost_DA": cout_total,
                     "Cost_Sens_DA": cout_sens,
@@ -508,7 +549,7 @@ for d_cyl_mm in dia_opts:
                     "Payback_Years": payback_years,
                     "Payback_Years_Sens": payback_years_sens,
                     "P_Recharge_Needed_kW": p_recharge_needed_kw,
-                    "P_Compressor_Est_kW": p_compressor_est_kw,
+                    "P_Compressor_Est_kW": compressor_power_kw,
                     "Recharge_Feasible": recharge_feasible,
                     "Optimization_Score_h_DA": score_da
                 })
@@ -543,6 +584,7 @@ else:
     # --- ONGLET 1: DIMENSIONNEMENT & OPTIMUM ---
     with tab1:
         st.markdown("### <i class='fa-solid fa-trophy' style='color:#F1C40F; margin-right:8px;'></i> Solution Optimale Recommandée (#1)", unsafe_allow_html=True)
+        st.info("💡 **Règle de Dimensionnement Sécuritaire** : Pour garantir la chaîne du froid toute l'année, la batterie (tubes, masse MCP et coût) est **toujours dimensionnée face au pic estival de la wilaya** (conception la plus défavorable). Le sélecteur saisonnier de la barre latérale simule la charge de la chambre froide et la performance de la batterie dans les conditions courantes.")
         
         # Affichage des métriques clés HCD
         col1, col2, col3, col4 = st.columns(4)
@@ -608,7 +650,7 @@ else:
             <div style="background-color: #FFFFFF; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid #2980B9; height: 100%;">
                 <p style="margin: 0 0 5px 0; font-weight: bold; color: #1B365D;">Énergie à évacuer pour solidifier le MCP :</p>
                 <p style="margin: 0; font-size: 1.1rem; color: #2C3E50;"><b>{(best_conf['M_PCM_Required_kg'] * config.L_F / 1e6):,.1f} MJ</b> (soit {(best_conf['M_PCM_Required_kg'] * config.L_F / 3.6e6):,.1f} kWh de froid stocké)</p>
-                <p style="margin: 8px 0 5px 0; font-weight: bold; color: #1B365D;">Puissance frigorifique moyenne requise pour la recharge (8h) :</p>
+                <p style="margin: 8px 0 5px 0; font-weight: bold; color: #1B365D;">Puissance frigorifique moyenne requise pour la recharge ({t_recharge_h:.1f}h) :</p>
                 <p style="margin: 0; font-size: 1.1rem; color: #2C3E50;"><b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b></p>
             </div>
             """, unsafe_allow_html=True)
@@ -620,7 +662,7 @@ else:
                 <div style="background-color: #E8F8F5; padding: 15px; border-radius: 8px; border: 1px solid #A2D9CE; border-left: 5px solid #2ECC71; height: 100%;">
                     <p style="margin: 0 0 5px 0; font-weight: bold; color: #16A085;"><i class="fa-solid fa-circle-check"></i> Recharge Physique Faisable</p>
                     <p style="margin: 0; font-size: 0.9rem; color: #2C3E50;">
-                        La puissance de recharge nécessaire (<b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b>) est inférieure à la puissance disponible du groupe existant (estimée à <b>{best_conf['P_Compressor_Est_kW']:.2f} kW</b>).
+                        La puissance de recharge nécessaire (<b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b>) est inférieure à la puissance disponible du groupe existant (configurée à <b>{best_conf['P_Compressor_Est_kW']:.2f} kW</b>).
                         <br><i>Note : La nuit, la charge thermique ambiante sur la chambre froide est quasi-nulle, libérant la pleine capacité du compresseur pour solidifier le MCP.</i>
                     </p>
                 </div>
@@ -630,7 +672,7 @@ else:
                 <div style="background-color: #FDEDEC; padding: 15px; border-radius: 8px; border: 1px solid #F5B7B1; border-left: 5px solid #E74C3C; height: 100%;">
                     <p style="margin: 0 0 5px 0; font-weight: bold; color: #C0392B;"><i class="fa-solid fa-circle-exclamation"></i> Attention : Puissance de Recharge Limite</p>
                     <p style="margin: 0; font-size: 0.9rem; color: #2C3E50;">
-                        La puissance frigorifique nécessaire pour solidifier le MCP en 8h (<b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b>) est proche ou supérieure à la capacité nominale estimée du groupe actuel (<b>{best_conf['P_Compressor_Est_kW']:.2f} kW</b>).
+                        La puissance frigorifique nécessaire pour solidifier le MCP en {t_recharge_h:.1f}h (<b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b>) est supérieure à la capacité nominale configurée du groupe actuel (<b>{best_conf['P_Compressor_Est_kW']:.2f} kW</b>).
                         <br><i>Recommandation : Rallonger la fenêtre des heures creuses ou augmenter temporairement la puissance de consigne de recharge la nuit.</i>
                     </p>
                 </div>
@@ -680,17 +722,18 @@ else:
         modules_range = np.linspace(max(10, int(best_conf["N_Modules"]*0.5)), int(best_conf["N_Modules"]*1.5), 20).astype(int)
         autonomy_plot = []
         for m in modules_range:
-            v_cyl_eff = math.pi * ((fam_d/1000.0) / 2.0)**2 * fam_l * (1.0 - empty_space_opt/100.0)
-            m_pcm_fict = m * v_cyl_eff * config.RHO_PCM / 1.10
-            ratio_masse = m_pcm_fict / best_conf["M_PCM_Required_kg"]
-            autonomy_val = autonomy_target * min(1.0, ratio_masse * (best_conf["Autonomy_Real_h"] / autonomy_target))
+            total_length_fict = m * fam_l
+            ua_battery_fict = total_length_fict / best_conf["R_Linear"]
+            q_battery_max_fict = ua_battery_fict * delta_t_driving
+            effectiveness_fict = min(1.0, q_battery_max_fict / q_load_total)
+            autonomy_val = autonomy_target * effectiveness_fict
             autonomy_plot.append(autonomy_val)
             
         df_plot = pd.DataFrame({
             "Nombre de Modules": modules_range,
-            "Autonomie Reelle": autonomy_plot
+            "Autonomie Réelle (h)": autonomy_plot
         })
-        st.line_chart(df_plot, x="Nombre de Modules", y="Autonomie Reelle")
+        st.line_chart(df_plot, x="Nombre de Modules", y="Autonomie Réelle (h)")
 
     # --- ONGLET 2: RENTABILITÉ & SENSIBILITÉ ---
     with tab2:
