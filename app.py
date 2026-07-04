@@ -282,14 +282,15 @@ with st.sidebar.expander("Paramètres Techniques & CAO Avancés", expanded=False
     
     len_opts = st.multiselect(
         "Longueurs de tubes (m)",
-        options=[1.0, 1.25, 1.5, 1.75, 2.0],
-        default=[1.0, 1.5, 2.0]
+        options=[0.5, 1.0, 1.25, 1.5, 1.75, 2.0],
+        default=[0.5, 1.0, 1.5, 2.0]
     )
     
     fins_opts = st.multiselect(
-        "Nombre d'ailettes",
-        options=[0, 4, 8],
-        default=[0, 4, 8]
+        "Nombre d'ailettes (internes/externes)",
+        options=[0, 2, 4, 6, 8, 10, 12],
+        default=[0, 4, 8],
+        help="Nombre d'ailettes de chaque côté de la paroi (interne et externe)."
     )
     
     vent_opts = st.multiselect(
@@ -463,17 +464,20 @@ results_list = []
 
 for d_cyl_mm in dia_opts:
     d_cyl = d_cyl_mm / 1000.0
+    d_inner = d_cyl - 2 * t_wall
     for n_fins in fins_opts:
-        # Exclure les configurations de 8 ailettes pour les diamètres < 100mm pour respecter le critère anti-givre (espacement min 50mm)
-        if n_fins == 8 and d_cyl_mm < 100:
-            continue
+        # Exclure dynamiquement les configurations non physiques ou ne respectant pas le critère anti-givre (50 mm min aux pointes d'ailettes externes)
+        if n_fins > 0:
+            spacing_ext_tip_check = (math.pi * (d_cyl_mm + 2.0 * 30.0) - n_fins * t_fin * 1000.0) / n_fins
+            spacing_int_base_check = (math.pi * d_inner * 1000.0 - n_fins * t_fin * 1000.0) / n_fins
+            if spacing_ext_tip_check < 50.0 or spacing_int_base_check <= 0.0:
+                continue
             
         current_fin_thickness = 0.0 if n_fins == 0 else t_fin
         for vent in vent_opts:
             for l_cyl in len_opts:
                 
                 h_conv = config.H_CONV_VENT_ON if vent == "ON" else config.H_CONV_VENT_OFF
-                d_inner = d_cyl - 2 * t_wall
                 l_fin_ext = 0.030
                 l_fin_int = 0.8 * (d_inner / 2.0)
                 
@@ -800,10 +804,8 @@ else:
                 * **Diamètre Extérieur (D_ext)** : `{d_cyl_mm_fiche:.1f} mm`
                 * **Diamètre Intérieur (D_int)** : `{d_inner_mm_fiche:.1f} mm`
                 * **Épaisseur de la Paroi (Aluminium)** : `{t_wall_mm:.1f} mm` (Calculé pour résister à la fatigue structurelle)
-                * **Nombre d'ailettes** : `{n_fins_fiche} ailettes` (Disposition en étoile radiale)
-                * **Épaisseur des ailettes** : `{t_fin_mm:.1f} mm`
-                * **Longueur ailettes externes** : `{l_fin_ext_mm:.1f} mm` (Optimisé pour la convection forcée de l'air)
-                * **Longueur ailettes internes** : `{l_fin_int_mm_fiche:.1f} mm` (80% du rayon interne, laissant un canal central libre pour faciliter l'écoulement de la paraffine liquide lors de la fabrication en usine)
+                * **Ailettes Externes** : `{n_fins_fiche} ailettes` (Longueur : `{l_fin_ext_mm:.1f} mm`, Épaisseur : `{t_fin_mm:.1f} mm`, disposition radiale)
+                * **Ailettes Internes** : `{n_fins_fiche} ailettes` (Longueur : `{l_fin_int_mm_fiche:.1f} mm`, Épaisseur : `{t_fin_mm:.1f} mm`, alignées radialement avec les externes)
                 * **Ciel gazeux (Volume vide de dilatation)** : `{empty_space_opt}%` de la longueur totale de chaque cylindre
                 """, unsafe_allow_html=True)
                 
