@@ -695,6 +695,9 @@ else:
         st.markdown("### <i class='fa-solid fa-trophy' style='color:#F1C40F; margin-right:8px;'></i> Solution Optimale Recommandée (#1)", unsafe_allow_html=True)
         st.info("💡 **Règle de Dimensionnement Sécuritaire** : Pour garantir la chaîne du froid toute l'année, la batterie (tubes, masse MCP et coût) est **toujours dimensionnée face au pic estival de la wilaya** (conception la plus défavorable). Le sélecteur saisonnier de la barre latérale simule la charge de la chambre froide et la performance de la batterie dans les conditions courantes.")
         
+        if recharge_fallback_active:
+            st.warning("⚠️ **Alerte Faisabilité Recharge** : Aucune configuration dans le budget maximum n'est compatible avec la puissance de recharge disponible de votre compresseur. Les résultats affichés ci-dessous sont un repli (fallback) sur la meilleure configuration technique, mais nécessiteront un surdimensionnement du compresseur ou une extension du temps de recharge nocturne.")
+        
         # Affichage des métriques clés HCD
         col1, col2, col3, col4 = st.columns(4)
         
