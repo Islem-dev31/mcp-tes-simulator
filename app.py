@@ -769,6 +769,77 @@ else:
         if best_conf['Ceiling_Occupancy_Pct'] > 100.0:
             st.warning("⚠️ **Encombrement plafond élevé (> 100%)** : Le nombre requis de modules dépasse la surface plane disponible au plafond en une seule couche. Une disposition sur plusieurs niveaux superposés ou une réduction de l'autonomie cible est fortement préconisée.")
             
+        # Fiche Technique & Spécifications CAO Détaillées (Prêt pour SolidWorks/AutoCAD)
+        with st.expander("📐 Fiche Technique & Spécifications CAO pour Fabrication (SolidWorks/AutoCAD)", expanded=True):
+            t_wall_mm = 2.0
+            t_fin_mm = 1.5
+            l_fin_ext_mm = 30.0
+            d_cyl_mm = best_conf['D_Cyl_mm']
+            d_inner_mm = d_cyl_mm - 2.0 * t_wall_mm
+            n_fins = int(best_conf['N_Fins'])
+            l_fin_int_mm = 0.8 * (d_inner_mm / 2.0)
+            
+            # Espacements
+            if n_fins > 0:
+                spacing_ext_base = (math.pi * d_cyl_mm - n_fins * t_fin_mm) / n_fins
+                spacing_ext_tip = (math.pi * (d_cyl_mm + 2.0 * l_fin_ext_mm) - n_fins * t_fin_mm) / n_fins
+                spacing_int_base = (math.pi * d_inner_mm - n_fins * t_fin_mm) / n_fins
+                spacing_int_tip = (math.pi * (d_inner_mm - 2.0 * l_fin_int_mm) - n_fins * t_fin_mm) / n_fins
+            else:
+                spacing_ext_base = spacing_ext_tip = spacing_int_base = spacing_int_tip = 0.0
+                
+            pitch_cc_mm = d_cyl_mm + 2.0 * l_fin_ext_mm + 50.0  # Entraxe cylindres
+            clear_dist_cyl_mm = 2.0 * l_fin_ext_mm + 50.0       # Espacement de sécurité hors ailettes (110 mm)
+            clear_dist_fin_mm = 50.0                            # Espacement de sécurité entre pointes d'ailettes (50 mm)
+            
+            col_spec1, col_spec2 = st.columns(2)
+            
+            with col_spec1:
+                st.markdown(f"""
+                ##### <i class='fa-solid fa-ruler-combined' style='color:#1B365D;'></i> 1. Dimensions Unitaires du Cylindre
+                * **Diamètre Extérieur (D_ext)** : `{d_cyl_mm:.1f} mm`
+                * **Diamètre Intérieur (D_int)** : `{d_inner_mm:.1f} mm`
+                * **Épaisseur de la Paroi (Aluminium)** : `{t_wall_mm:.1f} mm` (Calculé pour résister aux contraintes de dilatation thermique)
+                * **Nombre d'ailettes** : `{n_fins} ailettes` (Disposition en étoile radiale)
+                * **Épaisseur des ailettes** : `{t_fin_mm:.1f} mm`
+                * **Longueur ailettes externes** : `{l_fin_ext_mm:.1f} mm` (Optimisé pour la convection forcée de l'air)
+                * **Longueur ailettes internes** : `{l_fin_int_mm:.1f} mm` (80% du rayon interne, favorise la conduction sans bloquer l'expansion centrale)
+                * **Ciel gazeux (Volume vide de dilatation)** : `{empty_space_opt}%` de la longueur totale de chaque cylindre
+                """, unsafe_allow_html=True)
+                
+            with col_spec2:
+                st.markdown(f"""
+                ##### <i class='fa-solid fa-arrows-left-right' style='color:#1B365D;'></i> 2. Espacements & Disposition dans le Faisceau
+                * **Entraxe entre cylindres (Pitch C-C)** : `{pitch_cc_mm:.1f} mm` (Distance axe-à-axe recommandée pour les calculs d'aéraulique)
+                * **Distance minimale corps-à-corps** : `{clear_dist_cyl_mm:.1f} mm` (Incorpore les ailettes + l'espace de sécurité)
+                * **Distance libre entre pointes d'ailettes** : `{clear_dist_fin_mm:.1f} mm` (Critère strict anti-givre pour éviter le pontage de glace)
+                * **Disposition physique** : Alignement parallèle au flux d'air de l'évaporateur, fixé en sous-face de plafond.
+                * **Disposition multi-couches** : Recommandé sur 2 niveaux si l'encombrement au plafond dépasse 100%.
+                """, unsafe_allow_html=True)
+                
+            st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+            
+            st.markdown(f"""
+            ##### <i class='fa-solid fa-circle-nodes' style='color:#1B365D;'></i> 3. Mode de Raccordement & Liaisons Physiques
+            * **Raccordement fluidique (Aucun)** : Les modules sont des **cartouches étanches fermées de manière permanente**. Le MCP (paraffine) est confiné hermétiquement par soudage TIG d'embouts d'extrémité en aluminium. **Il n'y a aucun tuyau, collecteur, ni vanne**, éliminant tout risque de fuite de produit chimique dans la chambre froide ou de baisse de pression.
+            * **Liaisons mécaniques** : 
+              - Fixation des cylindres sur des rails de supportage en acier galvanisé de type *Unistrut* (longitudinaux).
+              - Suspension de ces rails au plafond à l'aide de suspentes en tiges filetées M10 (quantité requise : `{int(best_conf['N_Suspentes'])} suspentes` pour une charge sécurisée).
+              - Les tiges doivent traverser le plafond isolant (panneaux sandwichs) pour s'ancrer directement dans la charpente métallique porteuse du bâtiment pour des raisons de sécurité structurelle.
+            """)
+            
+            if n_fins > 0:
+                st.markdown(f"""
+                ##### <i class='fa-solid fa-chart-area' style='color:#1B365D;'></i> 4. Espacement Angulaire & Distances Inter-Ailettes
+                * **Angle entre ailettes** : `{360.0 / n_fins:.1f}°`
+                * **Distance de passage d'air externe** : 
+                  - Au niveau du cylindre (racine) : `{spacing_ext_base:.1f} mm` d'espace libre entre deux ailettes.
+                  - Au niveau de la pointe (sommet) : `{spacing_ext_tip:.1f} mm` d'espace libre.
+                * **Distance de conduction dans le MCP (Interne)** : 
+                  - Au niveau du cylindre (racine) : `{spacing_int_base:.1f} mm` d'épaisseur de paraffine.
+                  - Au niveau de la pointe (sommet) : `{spacing_int_tip:.1f} mm` d'épaisseur de paraffine.
+                """)
+            
         # Section de Faisabilité de Recharge Nocturne (HCD / Rigueur Scientifique)
         st.markdown("#### <i class='fa-solid fa-bolt' style='color:#1B365D; margin-right:8px;'></i> Faisabilité de la Recharge Nocturne (Solidification)", unsafe_allow_html=True)
         col_rec1, col_rec2 = st.columns(2)
