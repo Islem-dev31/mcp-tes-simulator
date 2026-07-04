@@ -845,7 +845,7 @@ else:
                 
                 # Alerte de fabricabilité (espace restreint) si l'espace interne de coulée descend sous 12 mm
                 if spacing_int_tip < 12.0:
-                    st.warning(f"⚠️ **Alerte Fabricabilité (Espace restreint)** : L'écartement interne de coulée à la pointe des ailettes n'est que de `{spacing_int_tip:.1f} mm` (inférieur à 12 mm). Lors du remplissage en usine, il existe un risque important d'emprisonnement de bulles d'air ou de défauts de matière lors de la solidification de la paraffine. *Recommandation : Si vous observez des défauts lors du prototypage, augmentez le diamètre du cylindre ou diminuez le nombre d'ailettes.*")
+                    st.warning(f"⚠️ **Alerte Fabricabilité (Espace restreint)** : L'écartement interne de coulée à la pointe des ailettes n'est que de `{spacing_int_tip:.1f} mm` (inférieur à 12 mm). Pour un remplissage industriel homogène, la buse de coulée standard de 8-10 mm nécessite au moins 1 à 2 mm de jeu de part et d'autre pour l'évacuation de l'air. Un espace plus étroit risque de créer des poches d'air ou des retassures lors de la solidification de la paraffine. *Recommandation : Privilégier un diamètre de tube supérieur ou un nombre d'ailettes réduit pour faciliter la production.*")
             
         # Section de Faisabilité de Recharge Nocturne (HCD / Rigueur Scientifique)
         st.markdown("#### <i class='fa-solid fa-bolt' style='color:#1B365D; margin-right:8px;'></i> Faisabilité de la Recharge Nocturne (Solidification)", unsafe_allow_html=True)
@@ -868,7 +868,7 @@ else:
                 <div style="background-color: #E8F8F5; padding: 15px; border-radius: 8px; border: 1px solid #A2D9CE; border-left: 5px solid #2ECC71; height: 100%;">
                     <p style="margin: 0 0 5px 0; font-weight: bold; color: #16A085;"><i class="fa-solid fa-circle-check"></i> Recharge Physique Faisable</p>
                     <p style="margin: 0; font-size: 0.9rem; color: #2C3E50;">
-                        La puissance de recharge nécessaire (<b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b>) is inférieure à la puissance disponible du groupe existant (configurée à <b>{best_conf['P_Compressor_Est_kW']:.2f} kW</b>).
+                        La puissance de recharge nécessaire (<b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b>) est inférieure à la puissance disponible du groupe existant (configurée à <b>{best_conf['P_Compressor_Est_kW']:.2f} kW</b>).
                         <br><i>Note : La nuit, la charge thermique ambiante sur la chambre froide est quasi-nulle, libérant la pleine capacité du compresseur pour solidifier le MCP.</i>
                     </p>
                 </div>
@@ -923,7 +923,7 @@ else:
         }), width="stretch")
         
         # Graphique d'autonomie vs nombre de modules
-        st.markdown("#### <i class='fa-solid fa-chart-line' style='color:#1B365D; margin-right:8px;'></i> Autonomie en fonction de la taille de la Batterie", unsafe_allow_html=True)
+        st.markdown("#### <i class='fa-solid fa-chart-line' style='color:#1B365D; margin-right:8px;'></i> Autonomie Simulée en fonction de la taille de la Batterie (saison sélectionnée)", unsafe_allow_html=True)
         
         fam_d = best_conf["D_Cyl_mm"]
         fam_fins = best_conf["N_Fins"]
@@ -942,9 +942,9 @@ else:
             
         df_plot = pd.DataFrame({
             "Nombre de Modules": modules_range,
-            "Autonomie Réelle (h)": autonomy_plot
+            "Autonomie Simulée (h)": autonomy_plot
         })
-        st.line_chart(df_plot, x="Nombre de Modules", y="Autonomie Réelle (h)")
+        st.line_chart(df_plot, x="Nombre de Modules", y="Autonomie Simulée (h)")
 
     # --- ONGLET 2: RENTABILITÉ & SENSIBILITÉ ---
     with tab2:
