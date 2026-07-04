@@ -23,16 +23,16 @@ Ce document rassemble les réponses techniques et scientifiques de second niveau
 
 #### Q3. Le calcul de l'humidité relative extérieure ($RH_{\text{ext}}$) repose sur des mots-clés comme "sud" ou "désertique". Les wilayas avec des descriptions combinées (ex: Béni Abbès, Illizi) sont-elles correctement classées ?
 *   **Réponse pour le Jury** :
-    Oui. La structure conditionnelle (`if/elif/else`) implémentée dans le code respecte un ordre de priorité géographique et climatique strict. Le mot-clé `"saharien"` est recherché en premier, suivi de `"sud"`, puis `"désertique"`, `"plateaux"`, et enfin `"littoral"`. L'intégralité des 58 wilayas a été testée et validée. Par exemple, Béni Abbès ("Sud-Ouest / Saoura (Climat Désertique)") est correctement associée au climat saharien sec ($RH_{\text{ext}} = 25\%$), ce qui garantit la justesse du calcul des infiltrations d'air.
+    Oui. L'ordre de vérification dans le code est : littoral/côtier en premier, puis sud/saharien/désertique, puis plateaux/continental, avec 60% en valeur par défaut. Sur les 58 wilayas de la base, aucune ne combine ces mots-clés de façon ambiguë (par exemple, aucun climat n'est décrit comme "littoral désertique"), donc l'ordre de priorité n'affecte aucun résultat réel — ce qui a été vérifié par balayage exhaustif des 58 entrées. Béni Abbès et Illizi sont bien classées à 25% (climat désertique).
 
 #### Q4. D'où proviennent les 4 catégories d'humidité relative extérieure (75%, 25%, 45%, 60%) ? Pourquoi ne pas utiliser des valeurs station par station ?
 *   **Réponse pour le Jury** :
-    Ces 4 valeurs correspondent aux humidités relatives moyennes de conception estivale issues des relevés historiques de l'**Office National de la Météorologie (ONM)** algérien pour les 4 grandes zones bioclimatiques du pays :
-    1.  **Zone Littorale (75%)** : Alger, Annaba, Oran (climat maritime humide).
-    2.  **Zone des Hauts-Plateaux (45%)** : Sétif, Tiaret, Djelfa (climat semi-aride sec).
-    3.  **Zone Continentale de Transition (60%)** : Constantine, Guelma.
-    4.  **Zone Grand Sud Saharien (25%)** : Adrar, Ouargla, In Salah (climat désertique hyper-aride).
-    Utiliser des moyennes zonales est conforme aux recommandations de l'**ASHRAE** pour les phases de pré-dimensionnement, simplifiant l'interface tout en conservant une précision physique suffisante.
+    Ces 4 valeurs sont des estimations d'ingénierie basées sur la classification climatique Köppen de l'Algérie pour les 4 grandes zones bioclimatiques du pays :
+    1.  **Zone Littorale (75%)** : Alger, Annaba, Oran (climat Csa - méditerranéen humide en bord de mer).
+    2.  **Zone des Hauts-Plateaux (45%)** : Sétif, Tiaret, Djelfa (climat BSk - semi-aride froid et sec).
+    3.  **Zone Continentale de Transition (60%)** : Constantine, Guelma (climat méditerranéen continental d'altitude moyenne).
+    4.  **Zone Grand Sud Saharien (25%)** : Adrar, Ouargla, In Salah (climat BWh - désertique chaud hyper-aride).
+    Utiliser des moyennes par type de climat est une pratique standard en pré-dimensionnement énergétique pour simplifier l'interface tout en restant très représentatif des conditions locales réelles.
 
 #### Q5. L'exclusion "8 ailettes si D < 100 mm" est-elle trop simpliste ? Le critère ne devrait-il pas reposer sur l'espacement calculé ?
 *   **Réponse pour le Jury** :
