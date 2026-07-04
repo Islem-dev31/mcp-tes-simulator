@@ -664,6 +664,21 @@ else:
 if df_sorted.empty:
     st.error("Aucune configuration trouvée sous le budget maximum. Veuillez augmenter le budget ou réduire les exigences.")
 else:
+    # Fonctions de formatage pour éviter les valeurs sentinelles de la bissection et ROI infinis
+    def format_irr(val):
+        if val <= -50.0:
+            return "Non rentable"
+        elif val >= 300.0:
+            return "> 300 %"
+        else:
+            return f"{val:.1f} %"
+            
+    def format_payback(val):
+        if val >= 99.0:
+            return "Infini"
+        else:
+            return f"{val:.2f} ans"
+
     # Récupérer la meilleure configuration (#1)
     best_conf = df_sorted.iloc[0]
     
@@ -710,8 +725,9 @@ else:
         with col4:
             st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-title">Autonomie Réelle</div>
-                <div class="metric-value">{best_conf['Autonomy_Real_h']:.2f} / {autonomy_target} <span class="metric-unit">h</span></div>
+                <div class="metric-title">Autonomie (Simulée / Été)</div>
+                <div class="metric-value">{best_conf['Autonomy_Real_h']:.1f}<span class="metric-unit">h</span> / {best_conf['Autonomy_Summer_h']:.1f}<span class="metric-unit">h</span></div>
+                <div style="font-size: 0.8rem; color: #555; text-align: center; margin-top: 2px;">Cible configurée : {autonomy_target}h</div>
             </div>
             """, unsafe_allow_html=True)
             
@@ -788,7 +804,11 @@ else:
             "D_Cyl_mm", "L_Cyl_m", "N_Fins", "Ventilation", 
             "N_Modules", "M_PCM_Required_kg", "M_Al_Total_kg", "Autonomy_Real_h", 
             "P_Recharge_Needed_kW", "Recharge_Feasible", "Cost_DA", "Payback_Years"
-        ]].rename(columns={
+        ]].copy()
+        
+        df_display["Payback_Years"] = df_display["Payback_Years"].apply(format_payback)
+        
+        df_display = df_display.rename(columns={
             "D_Cyl_mm": "Diamètre (mm)",
             "L_Cyl_m": "Longueur (m)",
             "N_Fins": "Nb Ailettes",
@@ -800,7 +820,7 @@ else:
             "P_Recharge_Needed_kW": "Recharge Req (kW)",
             "Recharge_Feasible": "Recharge Faisable",
             "Cost_DA": "Coût (DA)",
-            "Payback_Years": "Retour Invest. (ans)"
+            "Payback_Years": "Retour Invest."
         })
         
         st.dataframe(df_display.style.format({
@@ -808,8 +828,7 @@ else:
             "Masse MCP (kg)": "{:,.1f} kg",
             "Masse Alu (kg)": "{:,.1f} kg",
             "Autonomie (h)": "{:.2f} h",
-            "Recharge Req (kW)": "{:.2f} kW",
-            "Retour Invest. (ans)": "{:.2f} ans"
+            "Recharge Req (kW)": "{:.2f} kW"
         }), width="stretch")
         
         # Graphique d'autonomie vs nombre de modules
@@ -859,7 +878,12 @@ else:
         
         col_pay1, col_pay2 = st.columns(2)
         with col_pay1:
-            irr_val = f"{best_conf['TRI_Percent']:.1f} %" if best_conf['TRI_Percent'] > -50.0 else "Non rentable"
+            if best_conf['TRI_Percent'] <= -50.0:
+                irr_val = "Non rentable"
+            elif best_conf['TRI_Percent'] >= 300.0:
+                irr_val = "> 300 %"
+            else:
+                irr_val = f"{best_conf['TRI_Percent']:.1f} %"
             st.markdown(f"""
             ##### <i class='fa-solid fa-chart-line' style='color:#1B365D;'></i> Indicateurs de Retour sur Investissement
             * **Économies Totales** : `{best_conf['Savings_Yearly_DA']:,.0f} DA / an`
@@ -1019,6 +1043,11 @@ else:
         st.write("Ce tableau regroupe toutes les configurations valides sous le budget maximal.")
         
         df_db_display = df_filtered.copy().sort_values(by="Optimization_Score_h_DA", ascending=False)
+        
+        # Appliquer les fonctions de formatage pour éviter d'afficher des valeurs sentinelles
+        df_db_display["TRI_Percent"] = df_db_display["TRI_Percent"].apply(format_irr)
+        df_db_display["Payback_Years"] = df_db_display["Payback_Years"].apply(format_payback)
+        
         df_db_display = df_db_display[[
             "D_Cyl_mm", "N_Fins", "Ventilation", "L_Cyl_m", "Q_Load_Total_W", 
             "M_PCM_Required_kg", "M_Al_Total_kg", "Autonomy_Real_h", "N_Modules", 
@@ -1034,9 +1063,9 @@ else:
             "Autonomy_Real_h": "Autonomie (h)",
             "N_Modules": "Nb Cylindres",
             "Cost_DA": "Coût (DA)",
-            "Payback_Years": "Payback Simple (ans)",
+            "Payback_Years": "Payback Simple",
             "VAN_DA": "VAN (DA)",
-            "TRI_Percent": "TRI actualisé (%)",
+            "TRI_Percent": "TRI actualisé",
             "Ceiling_Occupancy_Pct": "Occ. Plafond (%)",
             "N_Suspentes": "Nb Suspentes"
         })
@@ -1046,9 +1075,7 @@ else:
             "MCP (kg)": "{:,.1f}",
             "Alu (kg)": "{:,.1f}",
             "Autonomie (h)": "{:.2f} h",
-            "Payback Simple (ans)": "{:.2f} ans",
             "VAN (DA)": "{:,.0f} DA",
-            "TRI actualisé (%)": "{:.1f} %",
             "Occ. Plafond (%)": "{:.1f} %",
             "Nb Suspentes": "{:d}"
         }), width="stretch")
