@@ -774,36 +774,36 @@ else:
             t_wall_mm = 2.0
             t_fin_mm = 1.5
             l_fin_ext_mm = 30.0
-            d_cyl_mm = best_conf['D_Cyl_mm']
-            d_inner_mm = d_cyl_mm - 2.0 * t_wall_mm
-            n_fins = int(best_conf['N_Fins'])
-            l_fin_int_mm = 0.8 * (d_inner_mm / 2.0)
+            d_cyl_mm_fiche = best_conf['D_Cyl_mm']
+            d_inner_mm_fiche = d_cyl_mm_fiche - 2.0 * t_wall_mm
+            n_fins_fiche = int(best_conf['N_Fins'])
+            l_fin_int_mm_fiche = 0.8 * (d_inner_mm_fiche / 2.0)
             
             # Espacements
-            if n_fins > 0:
-                spacing_ext_base = (math.pi * d_cyl_mm - n_fins * t_fin_mm) / n_fins
-                spacing_ext_tip = (math.pi * (d_cyl_mm + 2.0 * l_fin_ext_mm) - n_fins * t_fin_mm) / n_fins
-                spacing_int_base = (math.pi * d_inner_mm - n_fins * t_fin_mm) / n_fins
-                spacing_int_tip = (math.pi * (d_inner_mm - 2.0 * l_fin_int_mm) - n_fins * t_fin_mm) / n_fins
+            if n_fins_fiche > 0:
+                spacing_ext_base = (math.pi * d_cyl_mm_fiche - n_fins_fiche * t_fin_mm) / n_fins_fiche
+                spacing_ext_tip = (math.pi * (d_cyl_mm_fiche + 2.0 * l_fin_ext_mm) - n_fins_fiche * t_fin_mm) / n_fins_fiche
+                spacing_int_base = (math.pi * d_inner_mm_fiche - n_fins_fiche * t_fin_mm) / n_fins_fiche
+                spacing_int_tip = (math.pi * (d_inner_mm_fiche - 2.0 * l_fin_int_mm_fiche) - n_fins_fiche * t_fin_mm) / n_fins_fiche
             else:
                 spacing_ext_base = spacing_ext_tip = spacing_int_base = spacing_int_tip = 0.0
                 
-            pitch_cc_mm = d_cyl_mm + 2.0 * l_fin_ext_mm + 50.0  # Entraxe cylindres
+            pitch_cc_mm = d_cyl_mm_fiche + 2.0 * l_fin_ext_mm + 50.0  # Entraxe cylindres
             clear_dist_cyl_mm = 2.0 * l_fin_ext_mm + 50.0       # Espacement de sécurité hors ailettes (110 mm)
-            clear_dist_fin_mm = 50.0                            # Espacement de sécurité entre pointes d'ailettes (50 mm)
+            clear_dist_fin_mm = 50.0                            # Distance libre de sécurité entre pointes d'ailettes de tubes voisins
             
             col_spec1, col_spec2 = st.columns(2)
             
             with col_spec1:
                 st.markdown(f"""
                 ##### <i class='fa-solid fa-ruler-combined' style='color:#1B365D;'></i> 1. Dimensions Unitaires du Cylindre
-                * **Diamètre Extérieur (D_ext)** : `{d_cyl_mm:.1f} mm`
-                * **Diamètre Intérieur (D_int)** : `{d_inner_mm:.1f} mm`
-                * **Épaisseur de la Paroi (Aluminium)** : `{t_wall_mm:.1f} mm` (Calculé pour résister aux contraintes de dilatation thermique)
-                * **Nombre d'ailettes** : `{n_fins} ailettes` (Disposition en étoile radiale)
+                * **Diamètre Extérieur (D_ext)** : `{d_cyl_mm_fiche:.1f} mm`
+                * **Diamètre Intérieur (D_int)** : `{d_inner_mm_fiche:.1f} mm`
+                * **Épaisseur de la Paroi (Aluminium)** : `{t_wall_mm:.1f} mm` (Calculé pour résister à la fatigue structurelle)
+                * **Nombre d'ailettes** : `{n_fins_fiche} ailettes` (Disposition en étoile radiale)
                 * **Épaisseur des ailettes** : `{t_fin_mm:.1f} mm`
                 * **Longueur ailettes externes** : `{l_fin_ext_mm:.1f} mm` (Optimisé pour la convection forcée de l'air)
-                * **Longueur ailettes internes** : `{l_fin_int_mm:.1f} mm` (80% du rayon interne, favorise la conduction sans bloquer l'expansion centrale)
+                * **Longueur ailettes internes** : `{l_fin_int_mm_fiche:.1f} mm` (80% du rayon interne, laissant un canal central libre pour faciliter l'écoulement de la paraffine liquide lors de la fabrication en usine)
                 * **Ciel gazeux (Volume vide de dilatation)** : `{empty_space_opt}%` de la longueur totale de chaque cylindre
                 """, unsafe_allow_html=True)
                 
@@ -812,7 +812,7 @@ else:
                 ##### <i class='fa-solid fa-arrows-left-right' style='color:#1B365D;'></i> 2. Espacements & Disposition dans le Faisceau
                 * **Entraxe entre cylindres (Pitch C-C)** : `{pitch_cc_mm:.1f} mm` (Distance axe-à-axe recommandée pour les calculs d'aéraulique)
                 * **Distance minimale corps-à-corps** : `{clear_dist_cyl_mm:.1f} mm` (Incorpore les ailettes + l'espace de sécurité)
-                * **Distance libre entre pointes d'ailettes** : `{clear_dist_fin_mm:.1f} mm` (Critère strict anti-givre pour éviter le pontage de glace)
+                * **Distance libre de sécurité entre tubes voisins (pointes à pointes)** : `{clear_dist_fin_mm:.1f} mm` (Critère strict anti-givre pour éviter le pontage de glace entre modules adjacents)
                 * **Disposition physique** : Alignement parallèle au flux d'air de l'évaporateur, fixé en sous-face de plafond.
                 * **Disposition multi-couches** : Recommandé sur 2 niveaux si l'encombrement au plafond dépasse 100%.
                 """, unsafe_allow_html=True)
@@ -828,17 +828,24 @@ else:
               - Les tiges doivent traverser le plafond isolant (panneaux sandwichs) pour s'ancrer directement dans la charpente métallique porteuse du bâtiment pour des raisons de sécurité structurelle.
             """)
             
-            if n_fins > 0:
+            if n_fins_fiche > 0:
                 st.markdown(f"""
-                ##### <i class='fa-solid fa-chart-area' style='color:#1B365D;'></i> 4. Espacement Angulaire & Distances Inter-Ailettes
-                * **Angle entre ailettes** : `{360.0 / n_fins:.1f}°`
-                * **Distance de passage d'air externe** : 
-                  - Au niveau du cylindre (racine) : `{spacing_ext_base:.1f} mm` d'espace libre entre deux ailettes.
-                  - Au niveau de la pointe (sommet) : `{spacing_ext_tip:.1f} mm` d'espace libre.
-                * **Distance de conduction dans le MCP (Interne)** : 
-                  - Au niveau du cylindre (racine) : `{spacing_int_base:.1f} mm` d'épaisseur de paraffine.
-                  - Au niveau de la pointe (sommet) : `{spacing_int_tip:.1f} mm` d'épaisseur de paraffine.
+                ##### <i class='fa-solid fa-chart-area' style='color:#1B365D;'></i> 4. Espacement Angulaire & Distances Inter-Ailettes (Sur le même tube)
+                * **Angle entre ailettes** : `{360.0 / n_fins_fiche:.1f}°`
+                * **Écartement circonférentiel externe (Passage d'air)** : 
+                  - Au niveau du cylindre (racine) : `{spacing_ext_base:.1f} mm` d'espace de passage libre.
+                  - Au niveau de la pointe (sommet) : `{spacing_ext_tip:.1f} mm` d'espace de passage libre.
+                * **Écartement circonférentiel interne (Remplissage MCP)** : 
+                  - Au niveau du cylindre (racine interne) : `{spacing_int_base:.1f} mm` d'espace de remplissage.
+                  - Au niveau de la pointe (sommet interne) : `{spacing_int_tip:.1f} mm` d'espace de remplissage.
+                * **Épaisseur maximale de conduction thermique du MCP (demi-écartement)** : 
+                  - Proche de la paroi : `{spacing_int_base / 2.0:.1f} mm` (distance maximale que la chaleur doit traverser par conduction pour atteindre l'aluminium)
+                  - Proche du centre (pointes) : `{spacing_int_tip / 2.0:.1f} mm` (distance maximale au niveau des pointes internes)
                 """)
+                
+                # Alerte de fabricabilité (espace restreint) si l'espace interne de coulée descend sous 12 mm
+                if spacing_int_tip < 12.0:
+                    st.warning(f"⚠️ **Alerte Fabricabilité (Espace restreint)** : L'écartement interne de coulée à la pointe des ailettes n'est que de `{spacing_int_tip:.1f} mm` (inférieur à 12 mm). Lors du remplissage en usine, il existe un risque important d'emprisonnement de bulles d'air ou de défauts de matière lors de la solidification de la paraffine. *Recommandation : Si vous observez des défauts lors du prototypage, augmentez le diamètre du cylindre ou diminuez le nombre d'ailettes.*")
             
         # Section de Faisabilité de Recharge Nocturne (HCD / Rigueur Scientifique)
         st.markdown("#### <i class='fa-solid fa-bolt' style='color:#1B365D; margin-right:8px;'></i> Faisabilité de la Recharge Nocturne (Solidification)", unsafe_allow_html=True)
@@ -861,7 +868,7 @@ else:
                 <div style="background-color: #E8F8F5; padding: 15px; border-radius: 8px; border: 1px solid #A2D9CE; border-left: 5px solid #2ECC71; height: 100%;">
                     <p style="margin: 0 0 5px 0; font-weight: bold; color: #16A085;"><i class="fa-solid fa-circle-check"></i> Recharge Physique Faisable</p>
                     <p style="margin: 0; font-size: 0.9rem; color: #2C3E50;">
-                        La puissance de recharge nécessaire (<b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b>) est inférieure à la puissance disponible du groupe existant (configurée à <b>{best_conf['P_Compressor_Est_kW']:.2f} kW</b>).
+                        La puissance de recharge nécessaire (<b>{best_conf['P_Recharge_Needed_kW']:.2f} kW</b>) is inférieure à la puissance disponible du groupe existant (configurée à <b>{best_conf['P_Compressor_Est_kW']:.2f} kW</b>).
                         <br><i>Note : La nuit, la charge thermique ambiante sur la chambre froide est quasi-nulle, libérant la pleine capacité du compresseur pour solidifier le MCP.</i>
                     </p>
                 </div>
@@ -884,7 +891,7 @@ else:
         
         df_display = df_top3[[
             "D_Cyl_mm", "L_Cyl_m", "N_Fins", "Ventilation", 
-            "N_Modules", "M_PCM_Required_kg", "M_Al_Total_kg", "Autonomy_Real_h", 
+            "N_Modules", "M_PCM_Required_kg", "M_Al_Total_kg", "Autonomy_Real_h", "Autonomy_Summer_h",
             "P_Recharge_Needed_kW", "Recharge_Feasible", "Cost_DA", "Payback_Years"
         ]].copy()
         
@@ -898,7 +905,8 @@ else:
             "N_Modules": "Nb Cylindres",
             "M_PCM_Required_kg": "Masse MCP (kg)",
             "M_Al_Total_kg": "Masse Alu (kg)",
-            "Autonomy_Real_h": "Autonomie (h)",
+            "Autonomy_Real_h": "Autonomie Simulée (h)",
+            "Autonomy_Summer_h": "Autonomie Été (h)",
             "P_Recharge_Needed_kW": "Recharge Req (kW)",
             "Recharge_Feasible": "Recharge Faisable",
             "Cost_DA": "Coût (DA)",
@@ -909,7 +917,8 @@ else:
             "Coût (DA)": "{:,.0f} DA",
             "Masse MCP (kg)": "{:,.1f} kg",
             "Masse Alu (kg)": "{:,.1f} kg",
-            "Autonomie (h)": "{:.2f} h",
+            "Autonomie Simulée (h)": "{:.2f} h",
+            "Autonomie Été (h)": "{:.2f} h",
             "Recharge Req (kW)": "{:.2f} kW"
         }), width="stretch")
         
@@ -960,16 +969,11 @@ else:
         
         col_pay1, col_pay2 = st.columns(2)
         with col_pay1:
-            if best_conf['TRI_Percent'] <= -50.0:
-                irr_val = "Non rentable"
-            elif best_conf['TRI_Percent'] >= 300.0:
-                irr_val = "> 300 %"
-            else:
-                irr_val = f"{best_conf['TRI_Percent']:.1f} %"
+            irr_val = format_irr(best_conf['TRI_Percent'])
             st.markdown(f"""
             ##### <i class='fa-solid fa-chart-line' style='color:#1B365D;'></i> Indicateurs de Retour sur Investissement
             * **Économies Totales** : `{best_conf['Savings_Yearly_DA']:,.0f} DA / an`
-            * **Temps de Retour Simple** : **`{best_conf['Payback_Years']:.2f} ans`**
+            * **Temps de Retour Simple** : **`{format_payback(best_conf['Payback_Years'])}`**
             * **Taux de Rentabilité Interne (TRI actualisé sur 10 ans)** : **`{irr_val}`**
             """, unsafe_allow_html=True)
         with col_pay2:
@@ -979,7 +983,7 @@ else:
             * **Valeur Actuelle Nette (VAN sur 10 ans @ 8%)** : **`{best_conf['VAN_DA']:,.0f} DA`** {van_status}
             * **Sensibilité au prix de l'Aluminium (+20%)** :
               * **Nouveau Coût Total** : `{best_conf['Cost_Sens_DA']:,.0f} DA`
-              * **Payback Simple Ajusté** : **`{best_conf['Payback_Years_Sens']:.2f} ans`**
+              * **Payback Simple Ajusté** : **`{format_payback(best_conf['Payback_Years_Sens'])}`**
             """, unsafe_allow_html=True)
             
         st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
@@ -1132,7 +1136,7 @@ else:
         
         df_db_display = df_db_display[[
             "D_Cyl_mm", "N_Fins", "Ventilation", "L_Cyl_m", "Q_Load_Total_W", 
-            "M_PCM_Required_kg", "M_Al_Total_kg", "Autonomy_Real_h", "N_Modules", 
+            "M_PCM_Required_kg", "M_Al_Total_kg", "Autonomy_Real_h", "Autonomy_Summer_h", "N_Modules", 
             "Cost_DA", "Payback_Years", "VAN_DA", "TRI_Percent", "Ceiling_Occupancy_Pct", "N_Suspentes"
         ]].rename(columns={
             "D_Cyl_mm": "Dia (mm)",
@@ -1142,7 +1146,8 @@ else:
             "Q_Load_Total_W": "Charge (W)",
             "M_PCM_Required_kg": "MCP (kg)",
             "M_Al_Total_kg": "Alu (kg)",
-            "Autonomy_Real_h": "Autonomie (h)",
+            "Autonomy_Real_h": "Autonomie Simulée (h)",
+            "Autonomy_Summer_h": "Autonomie Été (h)",
             "N_Modules": "Nb Cylindres",
             "Cost_DA": "Coût (DA)",
             "Payback_Years": "Payback Simple",
@@ -1156,7 +1161,8 @@ else:
             "Coût (DA)": "{:,.0f} DA",
             "MCP (kg)": "{:,.1f}",
             "Alu (kg)": "{:,.1f}",
-            "Autonomie (h)": "{:.2f} h",
+            "Autonomie Simulée (h)": "{:.2f} h",
+            "Autonomie Été (h)": "{:.2f} h",
             "VAN (DA)": "{:,.0f} DA",
             "Occ. Plafond (%)": "{:.1f} %",
             "Nb Suspentes": "{:d}"
