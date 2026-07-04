@@ -739,23 +739,31 @@ else:
         col_dims1, col_dims2 = st.columns(2)
         
         with col_dims1:
-            st.info(f"""
-            * **Diamètre du cylindre** : `{best_conf['D_Cyl_mm']} mm` (Taille idéale pour le transfert)
-            * **Longueur utile d'un cylindre** : `{best_conf['L_Cyl_m']} m`
-            * **Ailettes externes** : `{best_conf['N_Fins']} ailettes` en étoile (épaisseur `1.5 mm`, hauteur `30 mm`)
-            * **Type de ventilation** : Ventilation Active **{best_conf['Ventilation']}**
-            * **Dimensionnement de la porte** : `{w_door:.1f} m x {h_door:.1f} m` (Adapté au volume de la chambre)
-            """)
+            st.markdown(f"""
+            <div style="background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; padding: 15px; border-radius: 8px; font-family: sans-serif; font-size: 14px;">
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                    <li><b>Diamètre du cylindre</b> : <code>{best_conf['D_Cyl_mm']} mm</code> (Taille idéale pour le transfert)</li>
+                    <li><b>Longueur utile d'un cylindre</b> : <code>{best_conf['L_Cyl_m']} m</code></li>
+                    <li><b>Ailettes externes</b> : <code>{best_conf['N_Fins']} ailettes</code> en étoile (épaisseur <code>1.5 mm</code>, hauteur <code>30 mm</code>)</li>
+                    <li><b>Type de ventilation</b> : Ventilation Active <b>{best_conf['Ventilation']}</b></li>
+                    <li><b>Dimensionnement de la porte</b> : <code>{w_door:.1f} m x {h_door:.1f} m</code> (Adapté au volume de la chambre)</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
             
         with col_dims2:
-            occupancy_style = "color:#E74C3C; font-weight:bold;" if best_conf['Ceiling_Occupancy_Pct'] > 100.0 else "color:#2ECC71;"
-            st.success(f"""
-            * **Masse totale d'Aluminium** : `{best_conf['M_Al_Total_kg']:,.1f} kg` (Poids propre de la structure métallique)
-            * **Volume liquide MCP requis** : `{best_conf['M_PCM_Required_kg'] * 1.10 / config.RHO_PCM * 1000:,.1f} Litres` (dilaté à 10%)
-            * **Ciel gazeux (sécurité dilatation)** : `{empty_space_opt} %`
-            * **Points d'ancrage requis (suspentes M10)** : `{int(best_conf['N_Suspentes'])} suspentes` (Charge max 300kg/tige)
-            * **Encombrement au plafond** : <span style="{occupancy_style}">{best_conf['Ceiling_Occupancy_Pct']:.1f} %</span> de la surface de plafond
-            * **Besoin Frigorifique de Pointe** : `{q_load_total:,.1f} W` (Pertes: `{q_wall:,.0f}W` Parois, `{q_infiltration:,.0f}W` Infiltrations, `{q_product:,.0f}W` Produit)
+            occupancy_style = "color:#E74C3C; font-weight:bold;" if best_conf['Ceiling_Occupancy_Pct'] > 100.0 else "color:#2ECC71; font-weight:bold;"
+            st.markdown(f"""
+            <div style="background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; font-family: sans-serif; font-size: 14px;">
+                <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                    <li><b>Masse totale d'Aluminium</b> : <code>{best_conf['M_Al_Total_kg']:,.1f} kg</code> (Poids propre de la structure métallique)</li>
+                    <li><b>Volume liquide MCP requis</b> : <code>{best_conf['M_PCM_Required_kg'] * 1.10 / config.RHO_PCM * 1000:,.1f} Litres</code> (dilaté à 10%)</li>
+                    <li><b>Ciel gazeux (sécurité dilatation)</b> : <code>{empty_space_opt} %</code></li>
+                    <li><b>Points d'ancrage requis (suspentes M10)</b> : <code>{int(best_conf['N_Suspentes'])} suspentes</code> (Charge max 300kg/tige)</li>
+                    <li><b>Encombrement au plafond</b> : <span style="{occupancy_style}">{best_conf['Ceiling_Occupancy_Pct']:.1f} %</span> de la surface de plafond</li>
+                    <li><b>Besoin Frigorifique de Pointe</b> : <code>{q_load_total:,.1f} W</code> (Pertes: <code>{q_wall:,.0f}W</code> Parois, <code>{q_infiltration:,.0f}W</code> Infiltrations, <code>{q_product:,.0f}W</code> Produit)</li>
+                </ul>
+            </div>
             """, unsafe_allow_html=True)
             
         if best_conf['Ceiling_Occupancy_Pct'] > 100.0:
