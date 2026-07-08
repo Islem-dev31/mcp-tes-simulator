@@ -129,3 +129,12 @@ TARIF_HC_DA_KWH = 3.0      # Tarif Heures Creuses industrielle (DA/kWh)
 DAYS_OP_YEAR = 330.0       # Jours de fonctionnement par an
 PRIME_FIXE_SAVINGS_DA = 80000.0 # Économie forfaitaire sur prime de puissance (DA/an)
 DELTA_TARIF_DA_KWH = TARIF_HP_DA_KWH - TARIF_HC_DA_KWH # Différence tarifaire (8 DA/kWh)
+
+# ------------------------------------------------------------------------------
+# 7. RÈGLES DE CONCEPTION INDUSTRIELLE (DFM & RDM)
+# ------------------------------------------------------------------------------
+DFM_PUITS_CENTRAL_MIN_MM = 26.0      # Diamètre minimal du puits de paraffine (mm) pour le passage de la buse
+RDM_ASPECT_RATIO_MAX = 15.0          # Ratio d'élancement (L_fin / e_fin) maximal pour éviter le flambement/torsion
+DFM_STANDARD_FINS_COUNT = 8          # Standard d'extrusion de 8 ailettes pour les diamètres classiques
+DFM_MIN_DIA_STANDARD_FINS = 80       # Diamètre minimal (mm) pour l'application du standard de 8 ailettes
+DFM_MAX_DIA_STANDARD_FINS = 120      # Diamètre maximal (mm) pour l'application du standard de 8 ailettes
