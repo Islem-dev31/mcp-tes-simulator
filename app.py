@@ -10,7 +10,7 @@ import numpy as np
 import math
 
 # Importation des constantes physiques et économiques de config.py
-import config
+import mcp_config as config
 
 # Configuration de la page Streamlit pour KryoDrop
 st.set_page_config(
