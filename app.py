@@ -323,6 +323,59 @@ with st.sidebar.expander("Paramètres Techniques & CAO Avancés", expanded=False
         step=10
     ) / 1000.0
     
+    # 1. Hauteur de la chambre froide (Calculée par défaut mais ajustable)
+    default_height = 3.0 if volume < 50.0 else (4.0 if volume < 200.0 else 5.0)
+    height = st.number_input(
+        "Hauteur de la chambre (m)",
+        min_value=2.0, max_value=10.0,
+        value=float(default_height),
+        step=0.5,
+        help="Ajustez la hauteur sous plafond de la chambre froide."
+    )
+    
+    # 2. Dimensions de la porte (Largeur et Hauteur paramétrables)
+    default_w_door = 1.0 if volume < 50.0 else (1.4 if volume < 200.0 else 2.0)
+    default_h_door = 2.0 if volume < 50.0 else (2.2 if volume < 200.0 else 2.5)
+    w_door = st.number_input(
+        "Largeur de la porte (m)",
+        min_value=0.5, max_value=4.0,
+        value=float(default_w_door),
+        step=0.1
+    )
+    h_door = st.number_input(
+        "Hauteur de la porte (m)",
+        min_value=1.0, max_value=4.0,
+        value=float(default_h_door),
+        step=0.1
+    )
+    
+    # 3. Thermodynamique (COP et Température de Fusion du MCP)
+    default_cop = 3.0 if t_target >= 0 else 1.8
+    default_t_fusion = 2.0 if t_target >= 0 else -21.0
+    cop = st.number_input(
+        "COP du compresseur",
+        min_value=0.5, max_value=6.0,
+        value=float(default_cop),
+        step=0.1,
+        help="Coefficient de Performance du compresseur frigorifique."
+    )
+    t_fusion_pcm = st.number_input(
+        "Température de fusion du MCP (°C)",
+        min_value=-40.0, max_value=30.0,
+        value=float(default_t_fusion),
+        step=0.5,
+        help="Température de transition solide-liquide de la paraffine."
+    )
+    
+    # 4. Taux de maintenance annuel
+    maintenance_rate = st.number_input(
+        "Taux de maintenance annuel (%)",
+        min_value=0.0, max_value=10.0,
+        value=2.0,
+        step=0.5,
+        help="Coût d'entretien annuel en pourcentage de l'investissement initial."
+    ) / 100.0
+    
     empty_space_opt = st.selectbox(
         "Ciel gazeux (espace dilatation %)",
         options=[10, 15, 20],
@@ -398,31 +451,12 @@ with st.sidebar.expander("Paramètres Techniques & CAO Avancés", expanded=False
 # 2. LOGIQUE THERMODYNAMIQUE & CALCUL DE CHARGE
 # ==============================================================================
 
-# Calcul géométrique réaliste de la hauteur en fonction du volume (Q8)
-if volume < 50.0:
-    height = 3.0
-elif volume < 200.0:
-    height = 4.0
-else:
-    height = 5.0
-    
 area_floor = volume / height
 side_length = math.sqrt(area_floor)
 a_env = 2.0 * area_floor + 4.0 * side_length * height
 
 # Charge thermique interne statique indexée sur le volume de la chambre (Q6)
 q_internal_static = 50.0 + 1.0 * volume
-
-# Dimensionnement de porte réaliste basé sur le volume (Q10)
-if volume < 50.0:
-    w_door = 1.0
-    h_door = 2.0
-elif volume < 200.0:
-    w_door = 1.4
-    h_door = 2.2
-else:
-    w_door = 2.0
-    h_door = 2.5
 
 # Humidité relative extérieure dynamique selon le climat de la wilaya (Q7)
 desc_lower = city_data.get("desc", "").lower()
@@ -519,9 +553,7 @@ q_load_mean = max(0.0, q_wall_mean + q_infiltration_mean + q_product_mean + q_in
 e_required_joules = q_load_summer_peak * autonomy_target * 3600.0
 m_pcm_required = e_required_joules / config.L_F
 
-# COP et fusion
-cop = 3.0 if t_target >= 0 else 1.8
-t_fusion_pcm = 2.0 if t_target >= 0 else -21.0
+# Delta T moteur de transfert basé sur la température de fusion réglée
 delta_t_driving = t_target - t_fusion_pcm
 
 # ==============================================================================
@@ -667,11 +699,11 @@ for d_cyl_mm in dia_opts:
                     payback_years_sens = cout_sens / economie_annuelle_da if economie_annuelle_da > 0 else 99.0
                     
                     # Calcul de la VAN (NPV) sur 10 ans avec taux d'actualisation de 8% et inflation énergie de 5% (Q23)
-                    # Coût annuel de maintenance de 2% de l'investissement initial
+                    # Coût annuel de maintenance dynamique de l'investissement initial
                     van = -cout_total
                     if economie_annuelle_da > 0:
                         for year in range(1, 11):
-                            cf_year = economie_annuelle_da * ((1.05) ** year) - 0.02 * cout_total
+                            cf_year = economie_annuelle_da * ((1.05) ** year) - maintenance_rate * cout_total
                             van += cf_year / ((1.08) ** year)
                     else:
                         van = -cout_total
@@ -682,7 +714,7 @@ for d_cyl_mm in dia_opts:
                         def get_npv(r):
                             npv_val = -cout_total
                             for year in range(1, 11):
-                                cf_year = economie_annuelle_da * ((1.05) ** year) - 0.02 * cout_total
+                                cf_year = economie_annuelle_da * ((1.05) ** year) - maintenance_rate * cout_total
                                 npv_val += cf_year / ((1.0 + r) ** year)
                             return npv_val
                         
@@ -810,10 +842,10 @@ else:
     # --- ONGLET 1: DIMENSIONNEMENT & OPTIMUM ---
     with tab1:
         st.markdown("### <i class='fa-solid fa-snowflake' style='color:#29B6D8; margin-right:8px;'></i> Solution Optimale Recommandée (#1)", unsafe_allow_html=True)
-        st.info("💡 **Règle de Dimensionnement Sécuritaire** : Pour garantir la chaîne du froid toute l'année, la batterie (tubes, masse MCP et coût) est **toujours dimensionnée face au pic estival de la wilaya** (conception la plus défavorable). Le sélecteur saisonnier de la barre latérale simule la charge de la chambre froide et la performance de la batterie dans les conditions courantes.")
+        st.info("**Règle de Dimensionnement Sécuritaire** : Pour garantir la chaîne du froid toute l'année, la batterie (tubes, masse MCP et coût) est **toujours dimensionnée face au pic estival de la wilaya** (conception la plus défavorable). Le sélecteur saisonnier de la barre latérale simule la charge de la chambre froide et la performance de la batterie dans les conditions courantes.")
         
         if recharge_fallback_active:
-            st.warning("⚠️ **Alerte Faisabilité Recharge** : Aucune configuration dans le budget maximum n'est compatible avec la puissance de recharge disponible de votre compresseur. Les résultats affichés ci-dessous sont un repli (fallback) sur la meilleure configuration technique, mais nécessiteront un surdimensionnement du compresseur ou une extension du temps de recharge nocturne.")
+            st.warning("**Alerte Faisabilité Recharge** : Aucune configuration dans le budget maximum n'est compatible avec la puissance de recharge disponible de votre compresseur. Les résultats affichés ci-dessous sont un repli (fallback) sur la meilleure configuration technique, mais nécessiteront un surdimensionnement du compresseur ou une extension du temps de recharge nocturne.")
         
         # Affichage des métriques clés HCD KryoDrop (Régie par la hiérarchie de l'information B2B)
         col1, col2, col3 = st.columns(3)
@@ -900,7 +932,7 @@ else:
             """, unsafe_allow_html=True)
             
         if best_conf['Ceiling_Occupancy_Pct'] > 100.0:
-            st.warning("⚠️ **Encombrement plafond élevé (> 100%)** : Le nombre requis de modules dépasse la surface plane disponible au plafond en une seule couche. Une disposition sur plusieurs niveaux superposés ou une réduction de l'autonomie cible est fortement préconisée.")
+            st.warning("**Encombrement plafond élevé (> 100%)** : Le nombre requis de modules dépasse la surface plane disponible au plafond en une seule couche. Une disposition sur plusieurs niveaux superposés ou une réduction de l'autonomie cible est fortement préconisée.")
             
         # Validation DFM & Nomenclature Mécanique Validée pour SolidWorks
         st.markdown("#### <i class='fa-solid fa-gears' style='color:#29B6D8; margin-right:8px;'></i> Validation DFM & Nomenclature Industrielle (SolidWorks)", unsafe_allow_html=True)
@@ -1012,6 +1044,14 @@ else:
         * **Plastique préconisé :** **POM (Polyoxyméthylene / Acétal)** ou **PE-HD (Polyéthylène Haute Densité)**, conservant leur résilience et leur résistance au choc à basse température.
         """, unsafe_allow_html=True)
 
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("##### <i class='fa-solid fa-image' style='color:#29B6D8;'></i> Preuves Visuelles du Modèle CAO SolidWorks", unsafe_allow_html=True)
+        col_img1, col_img2 = st.columns(2)
+        with col_img1:
+            st.image("Capture d'écran 2026-07-08 192651.png", caption="Assemblage 7-6-7 en quinconce du rack KryoDrop dans SolidWorks", use_container_width=True)
+        with col_img2:
+            st.image("Capture d'écran 2026-07-08 182424.png", caption="Détail des berceaux de support et bagues d'isolation galvanique", use_container_width=True)
+
     # --- ONGLET 3: DOSSIER D'ÉTUDE RDM & STRUCTURE ---
     with tab3:
         st.markdown("### <i class='fa-solid fa-weight-hanging' style='color:#29B6D8; margin-right:8px;'></i> Dossier d'Étude RDM & Tenue de la Structure", unsafe_allow_html=True)
@@ -1063,6 +1103,10 @@ else:
               * **Rupture de Pont Thermique :** Insertion obligatoire de fourreaux/douilles en plastique isolant (Nylon/POM) autour des tiges M14 pour empêcher la formation de condensation et de givre.
               * **Scellement étanche :** Injection de mousse PU expansive et mastic élastomère pour préserver le pare-vapeur de la chambre froide.
             """, unsafe_allow_html=True)
+
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("##### <i class='fa-solid fa-image' style='color:#29B6D8;'></i> Analyse RDM et Modèle de Suspension", unsafe_allow_html=True)
+        st.image("Capture d'écran 2026-07-06 213743.png", caption="Modélisation SolidWorks - Ancrage isostatique à 4 suspentes M14 par module", use_container_width=True)
 
     # --- ONGLET 4: ÉTUDE THERMODYNAMIQUE & TRANSFERTS ---
     with tab4:
@@ -1219,10 +1263,10 @@ else:
             * **Taux de Rentabilité Interne (TRI actualisé sur 10 ans)** : **`{irr_val}`**
             """, unsafe_allow_html=True)
         with col_pay2:
-            van_status = "<span style='color:#2ECC71; font-weight:bold;'>(Projet Viable ✅)</span>" if best_conf['VAN_DA'] > 0 else "<span style='color:#E74C3C; font-weight:bold;'>(Non viable financièrement ❌)</span>"
+            van_status = "<span style='color:#29B6D8; font-weight:bold;'>(Projet Viable)</span>" if best_conf['VAN_DA'] > 0 else "<span style='color:#E74C3C; font-weight:bold;'>(Non viable financièrement)</span>"
             st.markdown(f"""
             ##### <i class='fa-solid fa-scale-unbalanced' style='color:#E74C3C;'></i> Valeur Actuelle Nette & Sensibilité
-            * **Valeur Actuelle Nette (VAN sur 10 ans @ 8%)** : **`{best_conf['VAN_DA']:,.0f} DA`** {van_status}
+            * **Valeur Actuelle Nette (VAN sur 10 ans @ 8%, maintenance @ {maintenance_rate*100:.1f}%)** : **`{best_conf['VAN_DA']:,.0f} DA`** {van_status}
             * **Sensibilité au prix de l'Aluminium (+20%)** :
               * **Nouveau Coût Total** : `{best_conf['Cost_Sens_DA']:,.0f} DA`
               * **Payback Simple Ajusté** : **`{format_payback(best_conf['Payback_Years_Sens'])}`**
@@ -1231,7 +1275,7 @@ else:
         st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
         
         if best_conf["Savings_Yearly_DA"] <= 0:
-            st.warning("⚠️ Les économies annuelles générées sont nulles ou négatives pour cette configuration. Le temps de retour sur investissement est infini.")
+            st.warning("Les économies annuelles générées sont nulles ou négatives pour cette configuration. Le temps de retour sur investissement est infini.")
         else:
             st.markdown("#### <i class='fa-solid fa-chart-area' style='color:#29B6D8; margin-right:8px;'></i> Sensibilité : Fluctuation du Temps de Retour face au prix d'achat de l'Aluminium", unsafe_allow_html=True)
             alu_prices = np.linspace(1000.0, 3000.0, 10)
