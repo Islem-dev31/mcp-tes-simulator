@@ -241,6 +241,65 @@ st.markdown("""
     .hero-feature-item i {
         color: #29B6D8;
     }
+
+    /* Media Queries pour Mobile UX (HCD) */
+    @media (max-width: 768px) {
+        .hero-container {
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .hero-title {
+            font-size: 1.8rem;
+            text-align: center;
+        }
+        .hero-subtitle {
+            font-size: 0.95rem;
+            text-align: center;
+            margin-bottom: 0.8rem;
+        }
+        .hero-text {
+            font-size: 0.85rem;
+            text-align: justify;
+            margin-bottom: 0.8rem;
+        }
+        .hero-features {
+            justify-content: center;
+            gap: 0.6rem;
+        }
+        .hero-feature-item {
+            padding: 6px 10px;
+            font-size: 0.8rem;
+        }
+        .hero-logo-container {
+            display: none !important; /* Cacher le grand logo sur mobile pour optimiser l'espace vertical */
+        }
+    }
+
+    /* Style personnalisé des Onglets (Signifiers & Affordances HCD) */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 6px;
+        border-bottom: 2px solid rgba(27, 54, 93, 0.1);
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #FFFFFF;
+        border: 1px solid rgba(27, 54, 93, 0.1);
+        border-radius: 8px 8px 0 0;
+        padding: 10px 18px;
+        color: #1B365D !important;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #29B6D8 !important;
+        border-color: #29B6D8;
+        background-color: rgba(41, 182, 216, 0.05);
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #1B365D !important;
+        color: #FFFFFF !important;
+        border-color: #1B365D !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -288,10 +347,18 @@ st.markdown(f"""
                 </div>
             </div>
         </div>
-        <div style="flex: 1; text-align: center; min-width: 200px; display: flex; align-items: center; justify-content: center;">
+        <div class="hero-logo-container" style="flex: 1; text-align: center; min-width: 200px; display: flex; align-items: center; justify-content: center;">
             {logo_img_html}
         </div>
     </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Indicateur de Feedback HCD (Real-time response signifier)
+st.markdown("""
+<div style="background-color: #E8F8F5; border: 1px solid #A2D9CE; padding: 10px 15px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+    <span style="color: #117A65; font-size: 1.2rem;"><i class="fa-solid fa-circle-check"></i></span>
+    <span style="color: #117A65; font-size: 0.9rem; font-weight: 600;">Jumeau Numérique Actif : Tous les calculs CAO, DFM, RDM et ROI se mettent à jour automatiquement à chaque modification des paramètres.</span>
 </div>
 """, unsafe_allow_html=True)
 
