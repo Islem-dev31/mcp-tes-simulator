@@ -670,8 +670,11 @@ for d_cyl_mm in dia_opts:
                     # Nombre de cylindres (parfaitement cohérent avec la longueur physique totale construite)
                     n_modules = total_length_physical / l_cyl
                     
-                    # Coût total
-                    cout_total = (m_al_total * config.PRIX_AL_BASE) + (m_pcm_required * config.PRIX_MCP_BASE) + (n_modules * config.COUT_FAB_CYL)
+                    # Coût total calculé de manière industrielle (BOM)
+                    n_racks = math.ceil(n_modules / 20.0)
+                    cout_fixed_per_rack = 12000.0 + 4500.0 + 3000.0 + 20000.0  # cadres + PE-HD + quincaillerie + MO/soudure
+                    cout_fixed_per_module = 2.0 * 500.0 + 2.0 * 100.0        # bouchons + bagues EPDM
+                    cout_total = (m_al_total * config.PRIX_AL_BASE) + (m_pcm_required * 1.10 * config.PRIX_MCP_BASE) + (n_modules * cout_fixed_per_module) + (n_racks * cout_fixed_per_rack)
                     if vent == "ON":
                         cout_total += config.SURCOUT_VENTILATION
                         
@@ -1109,6 +1112,101 @@ else:
             """, unsafe_allow_html=True)
 
         st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("##### <i class='fa-solid fa-file-invoice-dollar' style='color:#1B365D; margin-right:8px;'></i> 3. Nomenclature Financière & Matériaux (BOM)", unsafe_allow_html=True)
+        st.write("Détail du coût de revient industriel et nomenclature pour la configuration optimale choisie :")
+        
+        # Calculs de la BOM
+        n_racks = math.ceil(best_conf['N_Modules'] / 20.0)
+        m_al_total = best_conf['M_Al_Total_kg']
+        m_pcm_total_filled = best_conf['M_PCM_Required_kg'] * 1.10
+        n_bouchons = int(best_conf['N_Modules'] * 2)
+        n_bagues = int(best_conf['N_Modules'] * 2)
+        n_barres_flexion = int(n_racks * 3)
+        c_al = m_al_total * 1500.0
+        c_pcm = m_pcm_total_filled * 400.0
+        c_bouchons = n_bouchons * 500.0
+        c_bagues = n_bagues * 100.0
+        c_cadres = n_racks * 12000.0
+        c_barres_flexion = n_barres_flexion * 1500.0
+        c_quinc = n_racks * 3000.0
+        c_mo = n_racks * 20000.0
+        c_vent = 15000.0 if best_conf['Ventilation'] == "ON" else 0.0
+        c_total_bom = c_al + c_pcm + c_bouchons + c_bagues + c_cadres + c_barres_flexion + c_quinc + c_mo + c_vent
+
+        st.markdown(f"""
+        <table style="width:100%; border-collapse: collapse; font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #1B365D; border: 1px solid #E2E8F0;">
+            <thead>
+                <tr style="background-color: #1B365D; color: #FFFFFF; text-align: left; font-weight: bold;">
+                    <th style="padding: 12px; border: 1px solid #E2E8F0;">Désignation du composant</th>
+                    <th style="padding: 12px; border: 1px solid #E2E8F0;">Spécifications techniques / Quantité</th>
+                    <th style="padding: 12px; border: 1px solid #E2E8F0; text-align: right;">Prix Unitaire (DA)</th>
+                    <th style="padding: 12px; border: 1px solid #E2E8F0; text-align: right;">Montant Total (DA)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background-color: #FFFFFF;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Profilés Extrudés Aluminium</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{m_al_total:.1f} kg (Tubes avec 8 ailettes internes & 8 externes)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">1 500 DA / kg</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_al:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #F8FAFC;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Paraffine Organique (MCP)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{m_pcm_total_filled:.1f} kg (Chaleur latente 200 kJ/kg, marge 10%)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">400 DA / kg</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_pcm:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #FFFFFF;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Bouchons M16 à épaulement</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_bouchons} pièces (Usinées pour taraudage & étanchéité de soudage)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">500 DA / pc</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_bouchons:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #F8FAFC;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Bagues d'isolation EPDM</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_bagues} pièces (Shore 70A, longueur 40mm pour les extrémités lisses)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">100 DA / pc</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_bagues:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #FFFFFF;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Cadres en Acier Galvanisé</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_racks} pièces (Structure de supportage à 3 niveaux pour rack de 20 tubes)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">12 000 DA / pc</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_cadres:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #F8FAFC;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Barres anti-flexion (PE-HD)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_barres_flexion} pièces (Usinées sur mesure, longueur 2m à mi-portée)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">1 500 DA / pc</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_barres_flexion:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #FFFFFF;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Quincaillerie & Suspension M14</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_racks} lot(s) (4 tiges filetées M14 d'un mètre, écrous et rondelles)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">3 000 DA / lot</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_quinc:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #F8FAFC;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Main d'œuvre & Remplissage (TIG)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_racks} lot(s) (Forfait assemblage, soudage et remplissage paraffine)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">20 000 DA / lot</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_mo:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #FFFFFF; font-style: italic;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Surcoût Ventilation Active (Optionnelle)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">Système de ventilation forcée et onduleur de secours</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">Forfait</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_vent:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #E2E8F0; font-weight: bold; font-size: 15px;">
+                    <td style="padding: 12px; border: 1px solid #CBD5E1;" colspan="2">TOTAL GÉNÉRAL DU SYSTÈME (CAPEX)</td>
+                    <td style="padding: 12px; border: 1px solid #CBD5E1; text-align: right; font-weight: bold;" colspan="2">{c_total_bom:,.0f} DA</td>
+                </tr>
+            </tbody>
+        </table>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
         st.markdown("##### <i class='fa-solid fa-image' style='color:#29B6D8;'></i> Analyse RDM et Modèle de Suspension", unsafe_allow_html=True)
         st.image("Capture d'écran 2026-07-06 213743.png", caption="Modélisation SolidWorks - Ancrage isostatique à 4 suspentes M14 par module", use_container_width=True)
 
@@ -1289,7 +1387,10 @@ else:
             alu_prices = np.linspace(1000.0, 3000.0, 10)
             paybacks = []
             for p in alu_prices:
-                cost_temp = (best_conf["M_Al_Total_kg"] * p) + (best_conf["M_PCM_Required_kg"] * config.PRIX_MCP_BASE) + (best_conf["N_Modules"] * config.COUT_FAB_CYL)
+                n_racks_temp = math.ceil(best_conf["N_Modules"] / 20.0)
+                cout_fixed_per_rack_temp = 12000.0 + 4500.0 + 3000.0 + 20000.0
+                cout_fixed_per_module_temp = 2.0 * 500.0 + 2.0 * 100.0
+                cost_temp = (best_conf["M_Al_Total_kg"] * p) + (best_conf["M_PCM_Required_kg"] * 1.10 * config.PRIX_MCP_BASE) + (best_conf["N_Modules"] * cout_fixed_per_module_temp) + (n_racks_temp * cout_fixed_per_rack_temp)
                 if best_conf["Ventilation"] == "ON":
                     cost_temp += config.SURCOUT_VENTILATION
                 paybacks.append(cost_temp / best_conf["Savings_Yearly_DA"])
