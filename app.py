@@ -8,6 +8,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import math
+import base64
 
 # Importation des constantes physiques et économiques de config.py
 import mcp_config as config
@@ -160,64 +161,147 @@ st.markdown("""
         color: #721C24;
         border: 1px solid #F5C6CB;
     }
+
+    /* Style de la Hero Section Waoh */
+    .hero-container {
+        background: linear-gradient(135deg, #1B365D 0%, #0D233A 60%, #071321 100%);
+        border-radius: 16px;
+        padding: 2.2rem;
+        box-shadow: 0 10px 30px rgba(27, 54, 93, 0.15);
+        color: #FFFFFF;
+        margin-top: 5px;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(41, 182, 216, 0.2);
+    }
+    .hero-container::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -30%;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(41, 182, 216, 0.12) 0%, rgba(27, 54, 93, 0) 70%);
+        pointer-events: none;
+    }
+    .hero-badge {
+        background-color: rgba(41, 182, 216, 0.15);
+        border: 1px solid #29B6D8;
+        color: #29B6D8;
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        display: inline-block;
+        margin-bottom: 0.8rem;
+    }
+    .hero-title {
+        font-size: 2.6rem;
+        font-weight: 800;
+        color: #FFFFFF !important;
+        margin-top: 0px;
+        margin-bottom: 0.4rem;
+        line-height: 1.2;
+    }
+    .hero-subtitle {
+        font-size: 1.15rem;
+        color: #29B6D8;
+        font-weight: 600;
+        margin-top: 0px;
+        margin-bottom: 1.2rem;
+        letter-spacing: 0.5px;
+    }
+    .hero-text {
+        font-size: 1.0rem;
+        color: #E2E8F0;
+        line-height: 1.55;
+        margin-bottom: 1.2rem;
+        max-width: 820px;
+    }
+    .hero-features {
+        display: flex;
+        gap: 1.2rem;
+        flex-wrap: wrap;
+    }
+    .hero-feature-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 8px 14px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #FFFFFF;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .hero-feature-item i {
+        color: #29B6D8;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# En-tête principal KryoDrop
-col_logo, col_title = st.columns([1, 4])
-with col_logo:
-    st.image("logo5.png", width=160)
-with col_title:
-    st.markdown("""
-    <div style="margin-top: 5px;">
-        <h1 style="color: #1B365D; font-size: 2.2rem; margin-bottom: 0px;">KryoDrop</h1>
-        <p style="font-size: 1.1rem; color: #29B6D8; font-weight: 600; margin-top: -5px; letter-spacing: 1px;">MODERN COOLING SOLUTIONS</p>
-        <p style="font-size: 0.95rem; color: #7F8C8D; margin-top: -10px;">Simulateur d'Aide à la Décision Industrielle & Optimisation Économique (TES)</p>
-    </div>
-    """, unsafe_allow_html=True)
+# Conversion du logo transparent en base64 pour insertion HTML propre
+def get_base64_of_bin_file(bin_file):
+    import os
+    if os.path.exists(bin_file):
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    return ""
 
-# ==============================================================================
-# HCD : LE PROBLÈME ET LA SOLUTION (VISIBILITÉ & MODÈLE MENTAL CLAIR)
-# ==============================================================================
-col_intro1, col_intro2, col_intro3 = st.columns(3)
+logo_base64 = get_base64_of_bin_file("logo_icon.png")
 
-with col_intro1:
-    st.markdown("""
-    <div class="hcd-box problem-box">
-        <h4><i class="fa-solid fa-triangle-exclamation" style="color: #E74C3C; margin-right: 8px;"></i> Le Problème</h4>
-        <p style="font-size: 0.95rem; color: #555; margin: 0;">
-            Les chambres froides subissent des <b>factures Sonelgaz élevées</b> en heures de pointe (tarif x3.6) et sont exposées aux <b>coupures d'électricité</b> qui menacent les marchandises. Les solutions importées (ex: Viking Cold) sont chères, scellées et dépendantes de l'étranger.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+# Hero Section Waoh de KryoDrop
+if logo_base64:
+    logo_img_html = f'<img src="data:image/png;base64,{logo_base64}" width="160" style="filter: drop-shadow(0 0 15px rgba(41, 182, 216, 0.4));" />'
+else:
+    logo_img_html = '<div style="font-size: 5rem; color: #29B6D8;"><i class="fa-solid fa-snowflake"></i></div>'
 
-with col_intro2:
-    st.markdown("""
-    <div class="hcd-box solution-box">
-        <h4><i class="fa-solid fa-lightbulb" style="color: #2ECC71; margin-right: 8px;"></i> La Solution</h4>
-        <p style="font-size: 0.95rem; color: #555; margin: 0;">
-            Une <b>batterie thermique modulaire locale</b>. On y stocke le froid la nuit pendant les heures creuses (électricité à bas coût) pour le restituer de manière contrôlée en journée pendant les heures pleines ou en cas de panne de secteur.
-        </p>
+st.markdown(f"""
+<div class="hero-container">
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 2rem; flex-wrap: wrap;">
+        <div style="flex: 3; min-width: 300px;">
+            <span class="hero-badge">Greentech Challenge 2026</span>
+            <h1 class="hero-title">KryoDrop</h1>
+            <p class="hero-subtitle">ThermaShift : Le stockage thermique intelligent pour l'agro-industrie</p>
+            <p class="hero-text">
+                KryoDrop est une batterie thermique modulaire de stockage de froid (MCP-TES) conçue en Algérie. 
+                Notre jumeau numérique calcule instantanément le co-dimensionnement optimal pour effacer 100% de votre consommation de pointe diurne, 
+                sécuriser votre stock pendant 13 heures de délestage et diviser par 3 vos coûts d'investissement initial.
+            </p>
+            <div class="hero-features">
+                <div class="hero-feature-item">
+                    <i class="fa-solid fa-bolt-lightning"></i>
+                    <span>Arbitrage HP/HC (-30% Facture)</span>
+                </div>
+                <div class="hero-feature-item">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Sécurisation Active (13h+)</span>
+                </div>
+                <div class="hero-feature-item">
+                    <i class="fa-solid fa-industry"></i>
+                    <span>Conception DFM/RDM Locale</span>
+                </div>
+            </div>
+        </div>
+        <div style="flex: 1; text-align: center; min-width: 200px; display: flex; align-items: center; justify-content: center;">
+            {logo_img_html}
+        </div>
     </div>
-    """, unsafe_allow_html=True)
-
-with col_intro3:
-    st.markdown("""
-    <div class="hcd-box strength-box">
-        <h4><i class="fa-solid fa-circle-check" style="color: #3498DB; margin-right: 8px;"></i> Nos Points Forts</h4>
-        <p style="font-size: 0.95rem; color: #555; margin: 0;">
-            <b>1. Conductivité :</b> Tubes alu avec ailettes (200 W/m.K vs 0.15 plastique). Réponse thermique instantanée.<br>
-            <b>2. Réparabilité :</b> Tubes individuels démontables.<br>
-            <b>3. Coût local :</b> Fabrication 100% en Algérie en DA (3x moins cher).
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
 
 # ==============================================================================
 # 1. BARRE LATÉRALE - CONCEPTION HCD (HUMAN-CENTERED DESIGN)
 # ==============================================================================
-st.sidebar.image("logo5.png", width=180)
+import os
+sidebar_logo = "logo_icon.png" if os.path.exists("logo_icon.png") else "logo5.png"
+st.sidebar.image(sidebar_logo, width=110)
 st.sidebar.markdown("<h3 style='color:#1B365D; margin-top: 10px; margin-bottom: 20px;'><i class='fa-solid fa-sliders'></i> Configuration</h3>", unsafe_allow_html=True)
 
 # Choix de la ville algérienne
