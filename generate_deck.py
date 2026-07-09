@@ -554,13 +554,12 @@ def build_pitch_deck():
         ]
     )
     
-    # Right Card: Bilan des puissances & Secours
     add_content_card(
         slide6,
         left=Inches(6.8), top=Inches(1.6), width=Inches(5.7), height=Inches(5.2),
         title="Bilan des Puissances & Secours (UPS)",
         paragraphs=[
-            "• Ventilation Forcée Active : Soufflerie de 15W par module, consommant un total extrêmement bas de 120W à 240W (négligeable face au compresseur de 15 kW).",
+            "• Ventilation Forcée Active : Soufflerie de 15W par module (ratio forfaitaire 2 ventilateurs/module de 2m, à valider en soufflerie/CFD).",
             "• Onduleur de Secours (UPS) : Dimensionnement d'un onduleur Line-Interactive de 1000 VA pour maintenir la ventilation active en cas de coupure de courant.",
             "• Technologie Batterie LiFePO4 : Pack de batteries lithium-fer-phosphate (48V / 25Ah ou 12V / 100Ah) supportant 80% de décharge profonde pour assurer 13h d'autonomie électrique.",
             "• Sécurité Maximale : Chimie LiFePO4 hautement stable thermiquement pour une installation sûre en local technique industriel."
