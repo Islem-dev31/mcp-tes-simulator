@@ -31,48 +31,84 @@ st.markdown("""
     h1, h2, h3, h4, h5 {
         color: #1B365D;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        font-weight: 600;
+        font-weight: 700;
     }
     
     /* Titre de section */
     .section-title {
-        border-bottom: 2px solid #29B6D8;
-        padding-bottom: 5px;
-        margin-top: 20px;
-        margin-bottom: 15px;
+        border-bottom: 2.5px solid #29B6D8;
+        padding-bottom: 6px;
+        margin-top: 22px;
+        margin-bottom: 16px;
     }
     
     /* Style des cartes métriques HCD KryoDrop */
     .metric-card {
         background-color: #FFFFFF;
-        border-radius: 10px;
+        border-radius: 12px;
         padding: 1.5rem;
-        box-shadow: 0 4px 12px rgba(27, 54, 93, 0.06);
+        box-shadow: 0 4px 15px rgba(27, 54, 93, 0.04);
         border-left: 6px solid #29B6D8;
-        margin-bottom: 1rem;
-        transition: transform 0.2s;
+        border-top: 1px solid rgba(41, 182, 216, 0.08);
+        border-right: 1px solid rgba(27, 54, 93, 0.04);
+        border-bottom: 1px solid rgba(27, 54, 93, 0.04);
+        margin-bottom: 1.2rem;
+        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
     }
     .metric-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(27, 54, 93, 0.1);
+        transform: translateY(-4px);
+        box-shadow: 0 12px 22px rgba(27, 54, 93, 0.12);
+        border-left-color: #1B365D;
     }
     .metric-title {
         font-size: 0.85rem;
         color: #7F8C8D;
         text-transform: uppercase;
-        font-weight: bold;
-        letter-spacing: 0.5px;
+        font-weight: 700;
+        letter-spacing: 0.7px;
+        margin-bottom: 0.4rem;
     }
     .metric-value {
-        font-size: 1.9rem;
-        font-weight: bold;
+        font-size: 2rem;
+        font-weight: 800;
         color: #1B365D;
-        margin-top: 0.3rem;
+        line-height: 1.2;
     }
     .metric-unit {
         font-size: 1rem;
-        font-weight: normal;
+        font-weight: 600;
+        color: #29B6D8;
+        margin-left: 0.2rem;
+    }
+    .metric-subtitle {
+        font-size: 0.8rem;
         color: #7F8C8D;
+        margin-top: 0.5rem;
+        font-weight: 500;
+    }
+    .metric-icon {
+        font-size: 2.4rem;
+        color: rgba(41, 182, 216, 0.25);
+        transition: color 0.3s;
+    }
+    .metric-card:hover .metric-icon {
+        color: #29B6D8;
+    }
+    
+    /* Cartes DFM */
+    .dfm-card {
+        background-color: #FFFFFF;
+        border-radius: 8px;
+        padding: 15px;
+        border: 1px solid rgba(27, 54, 93, 0.08);
+        box-shadow: 0 2px 6px rgba(27, 54, 93, 0.02);
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+    }
+    .dfm-card:hover {
+        border-color: #29B6D8;
+        box-shadow: 0 4px 12px rgba(41, 182, 216, 0.1);
+        transform: translateY(-1px);
     }
     
     /* Bloc Problème/Solution */
@@ -107,12 +143,12 @@ st.markdown("""
     /* Badges DFM */
     .dfm-badge {
         display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
+        padding: 5px 10px;
+        border-radius: 5px;
         font-size: 0.8rem;
-        font-weight: bold;
-        margin-top: 5px;
-        margin-bottom: 5px;
+        font-weight: 700;
+        margin-top: 8px;
+        margin-bottom: 4px;
     }
     .dfm-ok {
         background-color: #D4EDDA;
@@ -773,50 +809,65 @@ else:
     
     # --- ONGLET 1: DIMENSIONNEMENT & OPTIMUM ---
     with tab1:
-        st.markdown("### <i class='fa-solid fa-trophy' style='color:#F1C40F; margin-right:8px;'></i> Solution Optimale Recommandée (#1)", unsafe_allow_html=True)
+        st.markdown("### <i class='fa-solid fa-snowflake' style='color:#29B6D8; margin-right:8px;'></i> Solution Optimale Recommandée (#1)", unsafe_allow_html=True)
         st.info("💡 **Règle de Dimensionnement Sécuritaire** : Pour garantir la chaîne du froid toute l'année, la batterie (tubes, masse MCP et coût) est **toujours dimensionnée face au pic estival de la wilaya** (conception la plus défavorable). Le sélecteur saisonnier de la barre latérale simule la charge de la chambre froide et la performance de la batterie dans les conditions courantes.")
         
         if recharge_fallback_active:
             st.warning("⚠️ **Alerte Faisabilité Recharge** : Aucune configuration dans le budget maximum n'est compatible avec la puissance de recharge disponible de votre compresseur. Les résultats affichés ci-dessous sont un repli (fallback) sur la meilleure configuration technique, mais nécessiteront un surdimensionnement du compresseur ou une extension du temps de recharge nocturne.")
         
-        # Affichage des métriques clés HCD
-        col1, col2, col3, col4 = st.columns(4)
+        # Affichage des métriques clés HCD KryoDrop (Régie par la hiérarchie de l'information B2B)
+        col1, col2, col3 = st.columns(3)
         
         with col1:
             st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-title">Coût Total Estimé</div>
-                <div class="metric-value">{best_conf['Cost_DA']:,.0f} <span class="metric-unit">DA</span></div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="metric-title">Autonomie Thermique</div>
+                        <div class="metric-value">{best_conf['Autonomy_Real_h']:.1f} <span class="metric-unit">h</span></div>
+                        <div class="metric-subtitle">Saison : {season.split('(')[0].strip()} | Cible : {autonomy_target}h (Été : {best_conf['Autonomy_Summer_h']:.1f}h)</div>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-snowflake"></i>
+                    </div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
             
         with col2:
             st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-title">Nombre de Cylindres</div>
-                <div class="metric-value">{int(best_conf['N_Modules'])} <span class="metric-unit">modules</span></div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="metric-title">Gains Annuels (Sonelgaz & Stock)</div>
+                        <div class="metric-value">{best_conf['Savings_Yearly_DA']:,.0f} <span class="metric-unit">DA/an</span></div>
+                        <div class="metric-subtitle">Arbitrage : {best_conf['Savings_Electricity_Yearly_DA']:,.0f} DA | Stock sécurisé : {best_conf['Savings_Outages_Yearly_DA']:,.0f} DA</div>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
             
         with col3:
             st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-title">Masse MCP (Paraffine)</div>
-                <div class="metric-value">{best_conf['M_PCM_Required_kg']:,.1f} <span class="metric-unit">kg</span></div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col4:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-title">Autonomie (Simulée / Été)</div>
-                <div class="metric-value">{best_conf['Autonomy_Real_h']:.1f}<span class="metric-unit">h</span> / {best_conf['Autonomy_Summer_h']:.1f}<span class="metric-unit">h</span></div>
-                <div style="font-size: 0.8rem; color: #555; text-align: center; margin-top: 2px;">Cible configurée : {autonomy_target}h</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="metric-title">Retour sur Investissement</div>
+                        <div class="metric-value">{format_payback(best_conf['Payback_Years'])}</div>
+                        <div class="metric-subtitle">TRI : {format_irr(best_conf['TRI_Percent'])} | Investissement : {best_conf['Cost_DA']:,.0f} DA</div>
+                    </div>
+                    <div class="metric-icon">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
             
         # Détails de dimensionnement complet de l'optimum
-        st.markdown("#### <i class='fa-solid fa-drafting-compass' style='color:#1B365D; margin-right:8px;'></i> Spécifications CAO pour Fabrication", unsafe_allow_html=True)
+        st.markdown("#### <i class='fa-solid fa-drafting-compass' style='color:#29B6D8; margin-right:8px;'></i> Spécifications CAO pour Fabrication", unsafe_allow_html=True)
         col_dims1, col_dims2 = st.columns(2)
         
         with col_dims1:
@@ -852,17 +903,17 @@ else:
             st.warning("⚠️ **Encombrement plafond élevé (> 100%)** : Le nombre requis de modules dépasse la surface plane disponible au plafond en une seule couche. Une disposition sur plusieurs niveaux superposés ou une réduction de l'autonomie cible est fortement préconisée.")
             
         # Validation DFM & Nomenclature Mécanique Validée pour SolidWorks
-        st.markdown("#### <i class='fa-solid fa-gears' style='color:#1B365D; margin-right:8px;'></i> Validation DFM & Nomenclature Industrielle (SolidWorks)", unsafe_allow_html=True)
+        st.markdown("#### <i class='fa-solid fa-gears' style='color:#29B6D8; margin-right:8px;'></i> Validation DFM & Nomenclature Industrielle (SolidWorks)", unsafe_allow_html=True)
         col_dfm1, col_dfm2 = st.columns([1, 2])
         
         with col_dfm1:
-            st.markdown("##### <i class='fa-solid fa-gauge-high' style='color:#1B365D; margin-right:6px;'></i> Indicateurs de Fabricabilité DFM / RDM")
+            st.markdown("##### <i class='fa-solid fa-gauge-high' style='color:#29B6D8; margin-right:6px;'></i> Indicateurs de Fabricabilité DFM / RDM")
             
             # Puits central
             puits_status = "dfm-ok" if best_conf.get('Puits_Central_mm', 0.0) >= config.DFM_PUITS_CENTRAL_MIN_MM else "dfm-fail"
             puits_icon = "fa-check" if best_conf.get('Puits_Central_mm', 0.0) >= config.DFM_PUITS_CENTRAL_MIN_MM else "fa-xmark"
             st.markdown(f"""
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e9ecef;">
+            <div class="dfm-card">
                 <p style="margin:0; font-size: 0.9rem; color: #555;">Puits de Remplissage Central (Ø mm)</p>
                 <h2 style="margin:0; color: #1B365D;">{best_conf.get('Puits_Central_mm', 0.0):.1f} mm</h2>
                 <div class="dfm-badge {puits_status}"><i class="fa-solid {puits_icon}"></i> RÈGLE DFM (Ømin {config.DFM_PUITS_CENTRAL_MIN_MM:.0f}mm)</div>
@@ -873,7 +924,7 @@ else:
             ratio_status = "dfm-ok" if best_conf.get('Aspect_Ratio', 0.0) <= config.RDM_ASPECT_RATIO_MAX else "dfm-fail"
             ratio_icon = "fa-check" if best_conf.get('Aspect_Ratio', 0.0) <= config.RDM_ASPECT_RATIO_MAX else "fa-xmark"
             st.markdown(f"""
-            <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #e9ecef;">
+            <div class="dfm-card">
                 <p style="margin:0; font-size: 0.9rem; color: #555;">Ratio d'Élancement de l'Ailette (L/e)</p>
                 <h2 style="margin:0; color: #1B365D;">{best_conf.get('Aspect_Ratio', 0.0):.1f}</h2>
                 <div class="dfm-badge {ratio_status}"><i class="fa-solid {ratio_icon}"></i> RÈGLE RDM (Max {config.RDM_ASPECT_RATIO_MAX:.0f})</div>
@@ -881,7 +932,7 @@ else:
             """, unsafe_allow_html=True)
 
         with col_dfm2:
-            st.markdown("##### <i class='fa-solid fa-list-check' style='color:#1B365D; margin-right:6px;'></i> Nomenclature Mécanique Validée pour SolidWorks")
+            st.markdown("##### <i class='fa-solid fa-list-check' style='color:#29B6D8; margin-right:6px;'></i> Nomenclature Mécanique Validée pour SolidWorks")
             st.markdown(f"""
             <ul style="line-height: 1.8; font-size: 0.95rem; margin-top: 10px; padding-left: 20px;">
                 <li><b>Le Cylindre Extrudé :</b> Tube Ø <code>{best_conf['D_Cyl_mm']:.0f} mm</code> comportant <b>exactement {int(best_conf['N_Fins'])} ailettes longitudinales radiales</b>. Les ailettes internes et externes sont parfaitement <b>alignées</b> pour créer un pont thermique direct.</li>
@@ -900,7 +951,7 @@ else:
             """, unsafe_allow_html=True)
             
         # Graphique d'autonomie vs nombre de modules
-        st.markdown("#### <i class='fa-solid fa-chart-line' style='color:#1B365D; margin-right:8px;'></i> Autonomie Simulée en fonction de la taille de la Batterie (saison sélectionnée)", unsafe_allow_html=True)
+        st.markdown("#### <i class='fa-solid fa-chart-line' style='color:#29B6D8; margin-right:8px;'></i> Autonomie Simulée en fonction de la taille de la Batterie (saison sélectionnée)", unsafe_allow_html=True)
         
         fam_d = best_conf["D_Cyl_mm"]
         fam_fins = best_conf["N_Fins"]
@@ -963,7 +1014,7 @@ else:
 
     # --- ONGLET 3: DOSSIER D'ÉTUDE RDM & STRUCTURE ---
     with tab3:
-        st.markdown("### <i class='fa-solid fa-weight-hanging' style='color:#1B365D; margin-right:8px;'></i> Dossier d'Étude RDM & Tenue de la Structure", unsafe_allow_html=True)
+        st.markdown("### <i class='fa-solid fa-weight-hanging' style='color:#29B6D8; margin-right:8px;'></i> Dossier d'Étude RDM & Tenue de la Structure", unsafe_allow_html=True)
         st.write("Cet onglet documente les calculs de résistance des suspentes et les conditions de rigidité structurelle exigées pour le plafond de la chambre froide.")
         
         total_mass_opt = best_conf['M_Al_Total_kg'] + best_conf['M_PCM_Required_kg'] * 1.10
@@ -1015,7 +1066,7 @@ else:
 
     # --- ONGLET 4: ÉTUDE THERMODYNAMIQUE & TRANSFERTS ---
     with tab4:
-        st.markdown("### <i class='fa-solid fa-calculator' style='color:#1B365D; margin-right:8px;'></i> Physique du Transfert Thermique & Modélisation", unsafe_allow_html=True)
+        st.markdown("### <i class='fa-solid fa-calculator' style='color:#29B6D8; margin-right:8px;'></i> Physique du Transfert Thermique & Modélisation", unsafe_allow_html=True)
         st.write("Ce rapport méthodologique détaille les lois de la thermodynamique qui régissent le dimensionnement de notre batterie thermique (TES).")
         
         # Section 1 : Bilan thermique global
@@ -1101,7 +1152,7 @@ else:
 
     # --- ONGLET 5: ÉTUDE ÉLECTRIQUE & SECOURS ---
     with tab5:
-        st.markdown("### <i class='fa-solid fa-bolt' style='color:#F39C12; margin-right:8px;'></i> Étude Électrique & Système de Secours (Onduleur / UPS)", unsafe_allow_html=True)
+        st.markdown("### <i class='fa-solid fa-bolt' style='color:#29B6D8; margin-right:8px;'></i> Étude Électrique & Système de Secours (Onduleur / UPS)", unsafe_allow_html=True)
         st.write("Cet onglet présente le bilan des puissances électriques de la ventilation forcée et le dimensionnement de l'onduleur de secours (UPS) requis en cas de panne de secteur.")
         
         n_modules_ceil = math.ceil(best_conf['N_Modules'])
@@ -1139,7 +1190,7 @@ else:
 
     # --- ONGLET 6: ÉTUDE BUDGÉTAIRE & RENTABILITÉ ---
     with tab6:
-        st.markdown("### <i class='fa-solid fa-coins' style='color:#27AE60; margin-right:8px;'></i> Rentabilité Économique et Économies Annuelles", unsafe_allow_html=True)
+        st.markdown("### <i class='fa-solid fa-coins' style='color:#29B6D8; margin-right:8px;'></i> Rentabilité Économique et Économies Annuelles", unsafe_allow_html=True)
         st.write("Le gain financier annuel généré par la batterie thermique repose sur deux leviers d'action :")
         
         col_eco1, col_eco2 = st.columns(2)
@@ -1162,7 +1213,7 @@ else:
         with col_pay1:
             irr_val = format_irr(best_conf['TRI_Percent'])
             st.markdown(f"""
-            ##### <i class='fa-solid fa-chart-line' style='color:#1B365D;'></i> Indicateurs de Retour sur Investissement
+            ##### <i class='fa-solid fa-chart-line' style='color:#29B6D8;'></i> Indicateurs de Retour sur Investissement
             * **Économies Totales** : `{best_conf['Savings_Yearly_DA']:,.0f} DA / an`
             * **Temps de Retour Simple** : **`{format_payback(best_conf['Payback_Years'])}`**
             * **Taux de Rentabilité Interne (TRI actualisé sur 10 ans)** : **`{irr_val}`**
@@ -1182,7 +1233,7 @@ else:
         if best_conf["Savings_Yearly_DA"] <= 0:
             st.warning("⚠️ Les économies annuelles générées sont nulles ou négatives pour cette configuration. Le temps de retour sur investissement est infini.")
         else:
-            st.markdown("#### <i class='fa-solid fa-chart-area' style='color:#1B365D; margin-right:8px;'></i> Sensibilité : Fluctuation du Temps de Retour face au prix d'achat de l'Aluminium", unsafe_allow_html=True)
+            st.markdown("#### <i class='fa-solid fa-chart-area' style='color:#29B6D8; margin-right:8px;'></i> Sensibilité : Fluctuation du Temps de Retour face au prix d'achat de l'Aluminium", unsafe_allow_html=True)
             alu_prices = np.linspace(1000.0, 3000.0, 10)
             paybacks = []
             for p in alu_prices:
@@ -1199,7 +1250,7 @@ else:
 
     # --- ONGLET 7: DONNÉES COMPLÈTES DE SIMULATION ---
     with tab7:
-        st.markdown("### <i class='fa-solid fa-database' style='color:#1B365D; margin-right:8px;'></i> Données de Simulation Exhaustives", unsafe_allow_html=True)
+        st.markdown("### <i class='fa-solid fa-database' style='color:#29B6D8; margin-right:8px;'></i> Données de Simulation Exhaustives", unsafe_allow_html=True)
         st.write("Ce tableau regroupe toutes les configurations valides sous le budget maximal.")
         
         df_db_display = df_filtered.copy().sort_values(by="Optimization_Score_h_DA", ascending=False)
