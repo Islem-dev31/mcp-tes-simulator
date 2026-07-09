@@ -1052,6 +1052,10 @@ else:
         with col_img2:
             st.image("Capture d'écran 2026-07-08 182424.png", caption="Détail des berceaux de support et bagues d'isolation galvanique", use_container_width=True)
 
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("##### <i class='fa-solid fa-video' style='color:#29B6D8; margin-right:8px;'></i> Vidéo de l'Assemblage 3D & Nomenclature", unsafe_allow_html=True)
+        st.video("Enregistrement 2026-07-08 220113.mp4", format="video/mp4")
+
     # --- ONGLET 3: DOSSIER D'ÉTUDE RDM & STRUCTURE ---
     with tab3:
         st.markdown("### <i class='fa-solid fa-weight-hanging' style='color:#29B6D8; margin-right:8px;'></i> Dossier d'Étude RDM & Tenue de la Structure", unsafe_allow_html=True)
@@ -1107,6 +1111,10 @@ else:
         st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
         st.markdown("##### <i class='fa-solid fa-image' style='color:#29B6D8;'></i> Analyse RDM et Modèle de Suspension", unsafe_allow_html=True)
         st.image("Capture d'écran 2026-07-06 213743.png", caption="Modélisation SolidWorks - Ancrage isostatique à 4 suspentes M14 par module", use_container_width=True)
+
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+        st.markdown("##### <i class='fa-solid fa-video' style='color:#29B6D8; margin-right:8px;'></i> Vidéo de l'Intégration & Suspension du Système", unsafe_allow_html=True)
+        st.video("Enregistrement 2026-07-08 220128.mp4", format="video/mp4")
 
     # --- ONGLET 4: ÉTUDE THERMODYNAMIQUE & TRANSFERTS ---
     with tab4:
