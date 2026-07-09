@@ -1509,10 +1509,10 @@ else:
         st.latex(r"R_{\text{linéaire}} = R_{\text{convection}} + R_{\text{peinture}} + R_{\text{aluminium}} + R_{\text{conduction MCP}}")
         
         st.markdown(r"""
-        1. **Convection externe** : $R_{\text{convection}} = \frac{1}{h_{\text{conv}} \cdot A_{\text{effective}}}$. L'utilisation de **ventilateurs actifs** permet de faire passer $h_{\text{conv}}$ de $5\text{ W/m}^2\text{K}$ (statique) à **$25\text{ W/m}^2\text{K}$** (ventilation forcée). Les ailettes en étoile multiplient la surface efficace d'échange.
-        2. **Peinture de protection** (époxy anti-corrosion) : $R_{\text{peinture}} = \frac{e_{\text{peinture}}}{\lambda_{\text{epoxy}} \cdot \pi D} + R_{\text{contact}}$.
-        3. **Paroi en Aluminium** : $R_{\text{aluminium}} = \frac{\ln(D_{\text{ex}} / D_{\text{in}})}{2\pi \lambda_{\text{Al}}}$. La conductivité thermique exceptionnelle de l'aluminium ($\lambda_{\text{Al}} = 200\text{ W/m.K}$) rend cette résistance négligeable.
-        4. **Conduction interne dans le MCP** : $R_{\text{conduction MCP}} = \frac{1}{4\pi \lambda_{\text{effective}}}$. La conductivité effective du composite MCP + ailettes internes en aluminium est calculée par la loi des mélanges :
+        1. **Convection externe** : $R_{\text{convection}} = \frac{1}{h_{\text{conv}} \cdot A_{\text{effective}}}$. L'utilisation de **ventilateurs actifs** permet de faire passer $h_{\text{conv}}$ de $5\text{ W/m}^2\text{K}$ (statique) à **$25\text{ W/m}^2\text{K}$** (ventilation forcée). Les ailettes en étoile multiplient la surface efficace d'échange. *(Note : le ratio de 2 ventilateurs de 15W par module de 2m est un paramètre de conception forfaitaire, voir Q6 de la FAQ ci-dessous).*
+        2. **Peinture de protection** (époxy anti-corrosion) : $R_{\text{peinture}} = \frac{e_{\text{peinture}}}{\lambda_{\text{epoxy}} \cdot \pi D} + R_{\text{contact}}.$
+        3. **Paroi en Aluminium** : $R_{\text{aluminium}} = \frac{\ln(D_{\text{ex}} / D_{\text{in}})}{2\pi \lambda_{\text{Al}}}.$ La conductivité thermique exceptionnelle de l'aluminium ($\lambda_{\text{Al}} = 200\text{ W/m.K}$) rend cette résistance négligeable.
+        4. **Conduction interne dans le MCP** : $R_{\text{conduction MCP}} = \frac{1}{4\pi \lambda_{\text{effective}}}.$ La conductivité effective du composite MCP + ailettes internes en aluminium est calculée par la loi des mélanges :
         """)
         st.latex(r"\lambda_{\text{effective}} = \lambda_{\text{MCP}} (1 - \phi_{\text{ailettes}}) + \lambda_{\text{Al}} \phi_{\text{ailettes}}")
         
@@ -1561,6 +1561,17 @@ else:
             Cela améliore naturellement le COP réel nocturne par rapport à un fonctionnement diurne. Notre modèle utilise des COP fixes et conservateurs : le gain économique réel sera donc **supérieur** à celui affiché dans notre ROI, renforçant la rentabilité de l'investissement.
             """)
 
+        with st.expander("Q6 : Comment justifiez-vous le coefficient de convection h = 25 W/m².K et l'hypothèse de 2 ventilateurs de 15W par module ?", expanded=False):
+            st.markdown(r"""
+            **Réponse Technique & Limitation du Modèle** :
+            * **L'hypothèse simplificatrice** : Le modèle thermique utilise un coefficient de convection forcée global constant $h_{\text{conv}} = 25\text{ W/m}^2\text{K}$ lorsque la ventilation est active. Par ailleurs, le dimensionnement industriel propose un ratio forfaitaire de **2 ventilateurs de 15W** par module de 2 mètres de long (soit un débit d'air théorique d'environ $400\text{ m}^3/\text{h}$ par ventilateur).
+            * **La justification physique** : Ce coefficient de $25\text{ W/m}^2\text{K}$ correspond à une vitesse d'air moyenne estimée à environ $2\text{ à }3\text{ m/s}$ au contact des ailettes, calculée selon la corrélation empirique de convection forcée externe pour des cylindres à ailettes longitudinales.
+            * **La limite à concéder (Avis du jury)** : Dans l'état actuel, il s'agit d'un **paramètre de conception saisi en dur** et non d'un couplage aéraulique direct. Le code ne résout pas la perte de charge à travers le réseau serré d'ailettes, ni ne vérifie si la puissance combinée de $30\text{ W}$ suffit réellement à surmonter ces pertes de charge pour maintenir la vitesse d'air requise.
+            * **Perspectives de validation** : Pour lever cette incertitude, la prochaine étape du projet consistera à :
+              1. Réaliser une **simulation numérique des fluides (CFD)** sous SolidWorks Flow Simulation pour cartographier le profil des vitesses d'air entre les tubes et calculer le coefficient de convection local.
+              2. Effectuer des **essais expérimentaux en soufflerie** sur un prototype de module instrumenté (anémomètre + sondes thermiques) pour valider empiriquement la corrélation débit/convection.
+            """)
+
     # --- ONGLET 5: ÉTUDE ÉLECTRIQUE & SECOURS ---
     with tab5:
         st.markdown("### <i class='fa-solid fa-bolt' style='color:#29B6D8; margin-right:8px;'></i> Dossier d'Étude Électrotechnique & Automatisation", unsafe_allow_html=True)
@@ -1594,7 +1605,7 @@ else:
             * **Nombre de ventilateurs préconisés (2 par module de 2m) :** `{n_fans}` ventilateurs hélicoïdes
             * **Puissance nominale par ventilateur :** `15 W`
             * **Puissance électrique totale consommée en fonctionnement :** **`{total_fan_power:.0f} W`** (soit `{total_fan_power/1000:.3f} kW`)
-            * *Note :* Cette consommation est extrêmement faible comparée à celle du compresseur frigorifique (~15 kW), ce qui rend le système de secours par batterie très compact et économique.
+            * *Note de conception :* Le ratio de 2 ventilateurs de 15W par module de 2m est un paramètre de conception forfaitaire (non issu d'un calcul de pertes de charge ou aéraulique direct, voir FAQ de l'onglet 4). Cette consommation est extrêmement faible comparée à celle du compresseur frigorifique (~15 kW), ce qui rend le système de secours par batterie très compact et économique.
             """, unsafe_allow_html=True)
             
         with col_elec2:
