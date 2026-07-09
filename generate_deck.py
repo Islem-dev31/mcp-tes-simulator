@@ -18,12 +18,11 @@ except ImportError:
 
 from pptx import Presentation
 from pptx.util import Inches, Pt
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 
 # --- DESIGN & COLOR PALETTE CONFIGURATION (DARK MODERN CORPORATE STYLE) ---
-# Tailored brand-aligned color system for KryoDrop (ThermaShift concept)
 COLOR_DARK_BG = RGBColor(7, 19, 33)       # #071321 - Premium dark background for slides
 COLOR_CARD_BG = RGBColor(16, 28, 48)      # #101C30 - Lighter card container background
 COLOR_CARD_BORDER = RGBColor(27, 44, 73)  # #1B2C49 - Subtle card borders
@@ -85,7 +84,7 @@ def draw_card_shape(slide, left, top, width, height, bg_color=COLOR_CARD_BG, bor
     return card
 
 def add_content_card(slide, left, top, width, height, title, paragraphs, title_color=COLOR_CYAN, bg_color=COLOR_CARD_BG, border_color=COLOR_CARD_BORDER):
-    """Creates a beautiful content card with a title and multi-paragraph body text."""
+    """Creates a beautiful content card with centered title and body texts."""
     # Draw card background
     draw_card_shape(slide, left, top, width, height, bg_color, border_color)
     
@@ -95,23 +94,26 @@ def add_content_card(slide, left, top, width, height, title, paragraphs, title_c
     tf = txBox.text_frame
     tf.word_wrap = True
     tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE # Centered vertically
     
     # Card Title
     p_title = tf.paragraphs[0]
     p_title.text = title
     p_title.font.name = FONT_TITLE
-    p_title.font.size = Pt(16)
+    p_title.font.size = Pt(17)
     p_title.font.bold = True
     p_title.font.color.rgb = title_color
-    p_title.space_after = Pt(12)
+    p_title.alignment = PP_ALIGN.CENTER # Centered horizontally
+    p_title.space_after = Pt(10)
     
     # Card Body Paragraphs
     for p_text in paragraphs:
         p = tf.add_paragraph()
         p.text = p_text
         p.font.name = FONT_BODY
-        p.font.size = Pt(11)
+        p.font.size = Pt(12.5) # Increased from 11 to 12.5 for clarity
         p.font.color.rgb = COLOR_WHITE
+        p.alignment = PP_ALIGN.CENTER # Centered horizontally
         p.space_after = Pt(8)
 
 def add_stat_card(slide, left, top, width, height, value, label, value_color=COLOR_CYAN, bg_color=COLOR_CARD_BG):
@@ -123,6 +125,7 @@ def add_stat_card(slide, left, top, width, height, value, label, value_color=COL
     tf = txBox.text_frame
     tf.word_wrap = True
     tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE # Centered vertically
     
     # Stat Value (Large bold number)
     p_val = tf.paragraphs[0]
@@ -169,6 +172,7 @@ def add_image_if_exists(slide, file_name, left, top, width, height, border_color
 def style_table_cell(cell, text, font_size=10, bold=False, text_color=COLOR_WHITE, bg_color=None, align=PP_ALIGN.LEFT):
     """Styles a table cell with font, color, alignment and background fill."""
     cell.text = text
+    cell.vertical_anchor = MSO_ANCHOR.MIDDLE # Centered vertically
     p = cell.text_frame.paragraphs[0]
     p.font.name = "Segoe UI"
     p.font.size = Pt(font_size)
@@ -179,12 +183,14 @@ def style_table_cell(cell, text, font_size=10, bold=False, text_color=COLOR_WHIT
         cell.fill.solid()
         cell.fill.fore_color.rgb = bg_color
 
-def create_textbox_tf(slide, left, top, width, height):
+def create_textbox_tf(slide, left, top, width, height, vertical_anchor=MSO_ANCHOR.MIDDLE):
     """Helper to create a text box and return its text frame with zero margins."""
     box = slide.shapes.add_textbox(left, top, width, height)
     tf = box.text_frame
     tf.word_wrap = True
     tf.margin_left = tf.margin_top = tf.margin_right = tf.margin_bottom = 0
+    if vertical_anchor:
+        tf.vertical_anchor = vertical_anchor
     return tf
 
 def build_pitch_deck():
@@ -197,20 +203,20 @@ def build_pitch_deck():
     blank_layout = prs.slide_layouts[6] # Blank slide layout
 
     # =========================================================================
-    # SLIDE 1: COVER SLIDE (ThermaShift / KryoDrop)
+    # SLIDE 1: COVER SLIDE (KryoDrop Startup)
     # =========================================================================
     slide1 = prs.slides.add_slide(blank_layout)
     set_slide_background(slide1, COLOR_DARK_BG)
     
     # Left vertical accent line
-    accent_bar = slide1.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(2.0), Inches(0.12), Inches(3.5))
+    accent_bar = slide1.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1.0), Inches(1.6), Inches(0.12), Inches(4.3))
     accent_bar.fill.solid()
     accent_bar.fill.fore_color.rgb = COLOR_CYAN
     accent_bar.line.fill.solid()
     accent_bar.line.fill.fore_color.rgb = COLOR_CYAN
     
-    # Title Text Frame
-    tf1 = create_textbox_tf(slide1, Inches(1.4), Inches(1.9), Inches(7.2), Inches(4.0))
+    # Title Text Frame (KryoDrop)
+    tf1 = create_textbox_tf(slide1, Inches(1.4), Inches(1.5), Inches(7.2), Inches(2.8), vertical_anchor=None)
     p_main = tf1.paragraphs[0]
     p_main.text = "KryoDrop"
     p_main.font.name = FONT_TITLE
@@ -219,7 +225,7 @@ def build_pitch_deck():
     p_main.font.color.rgb = COLOR_WHITE
     
     p_sub = tf1.add_paragraph()
-    p_sub.text = "ThermaShift : Le stockage thermique intelligent pour l'agro-industrie"
+    p_sub.text = "Le stockage thermique intelligent pour l'agro-industrie"
     p_sub.font.name = FONT_TITLE
     p_sub.font.size = Pt(20)
     p_sub.font.bold = True
@@ -228,13 +234,37 @@ def build_pitch_deck():
     p_sub.space_after = Pt(20)
     
     p_desc = tf1.add_paragraph()
-    p_desc.text = "Solution brevetée de stockage thermique par matériau à changement de phase (MCP-TES) pour optimiser et décarboner les chambres froides industrielles."
+    p_desc.text = "Solution innovante de stockage thermique par matériau à changement de phase (MCP-TES) pour optimiser et décarboner les chambres froides industrielles."
     p_desc.font.name = FONT_BODY
     p_desc.font.size = Pt(14)
     p_desc.font.color.rgb = COLOR_MUTED_TEXT
     
+    # Student Authors / Affiliation
+    tf_auth = create_textbox_tf(slide1, Inches(1.4), Inches(4.5), Inches(7.2), Inches(1.4), vertical_anchor=None)
+    p_auth_title = tf_auth.paragraphs[0]
+    p_auth_title.text = "PROJET DÉVELOPPÉ PAR :"
+    p_auth_title.font.name = FONT_TITLE
+    p_auth_title.font.size = Pt(11)
+    p_auth_title.font.bold = True
+    p_auth_title.font.color.rgb = COLOR_CYAN
+    p_auth_title.space_after = Pt(6)
+    
+    p_a1 = tf_auth.add_paragraph()
+    p_a1.text = "BOUIRA Islem Akram — Étudiant 5ème année mécanique (Systèmes Énergétiques) @ ENPO"
+    p_a1.font.name = FONT_BODY
+    p_a1.font.size = Pt(11)
+    p_a1.font.bold = True
+    p_a1.font.color.rgb = COLOR_WHITE
+    p_a1.space_after = Pt(4)
+    
+    p_a2 = tf_auth.add_paragraph()
+    p_a2.text = "ZANE Mohamed Elamine — Étudiant 4ème année électrotechnique @ ENPA"
+    p_a2.font.name = FONT_BODY
+    p_a2.font.size = Pt(11)
+    p_a2.font.bold = True
+    p_a2.font.color.rgb = COLOR_WHITE
+    
     # Logo insertion on the right if available
-    # Directly insert without border since it is the transparent logo
     logo_path = os.path.join(r"c:\Users\AURES\Desktop\MCP", "logo_icon.png")
     if os.path.exists(logo_path):
         slide1.shapes.add_picture(logo_path, Inches(9.2), Inches(2.0), Inches(3.2), Inches(3.2))
@@ -259,8 +289,7 @@ def build_pitch_deck():
     w_col = Inches(3.6)
     h_col = Inches(3.4)
     draw_card_shape(slide2, x_col1, Inches(1.6), w_col, h_col)
-    # Large Number "01" at top right
-    tf_num1 = create_textbox_tf(slide2, x_col1 + w_col - Inches(0.9), Inches(1.7), Inches(0.8), Inches(0.5))
+    tf_num1 = create_textbox_tf(slide2, x_col1 + w_col - Inches(0.9), Inches(1.7), Inches(0.8), Inches(0.5), vertical_anchor=None)
     p_n1 = tf_num1.paragraphs[0]
     p_n1.text = "01"
     p_n1.font.name = FONT_TITLE
@@ -268,25 +297,26 @@ def build_pitch_deck():
     p_n1.font.bold = True
     p_n1.font.color.rgb = COLOR_RED
     
-    tf_c1 = create_textbox_tf(slide2, x_col1 + Inches(0.25), Inches(1.8), w_col - Inches(0.5), h_col - Inches(0.5))
+    tf_c1 = create_textbox_tf(slide2, x_col1 + Inches(0.25), Inches(1.8), w_col - Inches(0.5), h_col - Inches(0.5), vertical_anchor=MSO_ANCHOR.MIDDLE)
     p_t1 = tf_c1.paragraphs[0]
     p_t1.text = "Factures Sonelgaz HP"
     p_t1.font.name = FONT_TITLE
-    p_t1.font.size = Pt(14)
+    p_t1.font.size = Pt(15)
     p_t1.font.bold = True
     p_t1.font.color.rgb = COLOR_CYAN
+    p_t1.alignment = PP_ALIGN.CENTER
     p_t1.space_after = Pt(12)
     p_b1 = tf_c1.add_paragraph()
     p_b1.text = "Les compresseurs frigorifiques tournent à plein régime en journée, subissant les tarifs électriques Heures Pleines (HP) x3.6 plus élevés qu'en Heures Creuses (HC)."
     p_b1.font.name = FONT_BODY
-    p_b1.font.size = Pt(10.5)
+    p_b1.font.size = Pt(12.5) # Increased for legibility
     p_b1.font.color.rgb = COLOR_WHITE
-    p_b1.space_after = Pt(8)
+    p_b1.alignment = PP_ALIGN.CENTER
 
     # Column 2 (Problem 2)
     x_col2 = Inches(4.8)
     draw_card_shape(slide2, x_col2, Inches(1.6), w_col, h_col)
-    tf_num2 = create_textbox_tf(slide2, x_col2 + w_col - Inches(0.9), Inches(1.7), Inches(0.8), Inches(0.5))
+    tf_num2 = create_textbox_tf(slide2, x_col2 + w_col - Inches(0.9), Inches(1.7), Inches(0.8), Inches(0.5), vertical_anchor=None)
     p_n2 = tf_num2.paragraphs[0]
     p_n2.text = "02"
     p_n2.font.name = FONT_TITLE
@@ -294,25 +324,26 @@ def build_pitch_deck():
     p_n2.font.bold = True
     p_n2.font.color.rgb = COLOR_RED
     
-    tf_c2 = create_textbox_tf(slide2, x_col2 + Inches(0.25), Inches(1.8), w_col - Inches(0.5), h_col - Inches(0.5))
+    tf_c2 = create_textbox_tf(slide2, x_col2 + Inches(0.25), Inches(1.8), w_col - Inches(0.5), h_col - Inches(0.5), vertical_anchor=MSO_ANCHOR.MIDDLE)
     p_t2 = tf_c2.paragraphs[0]
     p_t2.text = "Vulnérabilité Réseau"
     p_t2.font.name = FONT_TITLE
-    p_t2.font.size = Pt(14)
+    p_t2.font.size = Pt(15)
     p_t2.font.bold = True
     p_t2.font.color.rgb = COLOR_CYAN
+    p_t2.alignment = PP_ALIGN.CENTER
     p_t2.space_after = Pt(12)
     p_b2 = tf_c2.add_paragraph()
     p_b2.text = "Les coupures de courant d'été et les délestages répétitifs provoquent une hausse immédiate de la température de la chambre froide, menaçant le stock."
     p_b2.font.name = FONT_BODY
-    p_b2.font.size = Pt(10.5)
+    p_b2.font.size = Pt(12.5) # Increased for legibility
     p_b2.font.color.rgb = COLOR_WHITE
-    p_b2.space_after = Pt(8)
+    p_b2.alignment = PP_ALIGN.CENTER
 
     # Column 3 (Problem 3)
     x_col3 = Inches(8.8)
     draw_card_shape(slide2, x_col3, Inches(1.6), w_col, h_col)
-    tf_num3 = create_textbox_tf(slide2, x_col3 + w_col - Inches(0.9), Inches(1.7), Inches(0.8), Inches(0.5))
+    tf_num3 = create_textbox_tf(slide2, x_col3 + w_col - Inches(0.9), Inches(1.7), Inches(0.8), Inches(0.5), vertical_anchor=None)
     p_n3 = tf_num3.paragraphs[0]
     p_n3.text = "03"
     p_n3.font.name = FONT_TITLE
@@ -320,20 +351,21 @@ def build_pitch_deck():
     p_n3.font.bold = True
     p_n3.font.color.rgb = COLOR_RED
     
-    tf_c3 = create_textbox_tf(slide2, x_col3 + Inches(0.25), Inches(1.8), w_col - Inches(0.5), h_col - Inches(0.5))
+    tf_c3 = create_textbox_tf(slide2, x_col3 + Inches(0.25), Inches(1.8), w_col - Inches(0.5), h_col - Inches(0.5), vertical_anchor=MSO_ANCHOR.MIDDLE)
     p_t3 = tf_c3.paragraphs[0]
     p_t3.text = "Pertes de Marchandises"
     p_t3.font.name = FONT_TITLE
-    p_t3.font.size = Pt(14)
+    p_t3.font.size = Pt(15)
     p_t3.font.bold = True
     p_t3.font.color.rgb = COLOR_CYAN
+    p_t3.alignment = PP_ALIGN.CENTER
     p_t3.space_after = Pt(12)
     p_b3 = tf_c3.add_paragraph()
     p_b3.text = "Une seule rupture de chaîne de froid entraîne la perte sèche de denrées périssables de grande valeur. Risques sanitaires et financiers colossaux pour l'exploitant."
     p_b3.font.name = FONT_BODY
-    p_b3.font.size = Pt(10.5)
+    p_b3.font.size = Pt(12.5) # Increased for legibility
     p_b3.font.color.rgb = COLOR_WHITE
-    p_b3.space_after = Pt(8)
+    p_b3.alignment = PP_ALIGN.CENTER
     
     # Bottom Stats
     add_stat_card(slide2, left=Inches(0.8), top=Inches(5.3), width=Inches(3.6), height=Inches(1.6), value="+30 %", label="Surcoût en Heures Pleines", value_color=COLOR_RED)
@@ -345,7 +377,7 @@ def build_pitch_deck():
     # =========================================================================
     slide3 = prs.slides.add_slide(blank_layout)
     set_slide_background(slide3, COLOR_DARK_BG)
-    add_slide_header(slide3, "KryoDrop : Charger la Nuit, Libérer le Jour", "NOTRE PROPOSITION DE VALEUR")
+    add_slide_header(slide3, "KryoDrop : Charger la Nuit, Restituer le Jour", "NOTRE PROPOSITION DE VALEUR")
     
     # Left Hero Box
     add_content_card(
@@ -353,7 +385,7 @@ def build_pitch_deck():
         left=Inches(0.8), top=Inches(1.6), width=Inches(6.2), height=Inches(5.3),
         title="Le Cycle de Fonctionnement Intelligent",
         paragraphs=[
-            "• Stockage de Froid (Nuit) : Le compresseur fonctionne de nuit pendant les Heures Creuses (tarif réduit). Le COP nocturne est supérieur de 20% grâce à la fraîcheur de l'air extérieur, permettant une solidification du MCP (paraffine) à haute efficacité énergétique.",
+            "• Stockage de Froid (Nuit) : Le compresseur fonctionne de nuit pendant les Heures Creuses (tarif réduit). Le COP nocturne est supérieur de 20% grâce à la fraîcheur de l'air extérieur, permettant une solidification du MCP à haute efficacité énergétique.",
             "• Restitution Passive (Jour) : Le compresseur est éteint durant les Heures Pleines (8 à 12 heures). KryoDrop maintient la consigne thermique (+4°C / -18°C) par fusion contrôlée du MCP sans solliciter le compresseur.",
             "• Effacement Actif de la pointe de consommation sur le réseau électrique Sonelgaz."
         ],
@@ -366,35 +398,39 @@ def build_pitch_deck():
     # Card 1
     w_rcol = Inches(5.1)
     draw_card_shape(slide3, Inches(7.4), Inches(1.6), w_rcol, Inches(2.4))
-    tf_rs1 = create_textbox_tf(slide3, Inches(7.7), Inches(1.8), w_rcol - Inches(0.6), Inches(2.0))
+    tf_rs1 = create_textbox_tf(slide3, Inches(7.7), Inches(1.8), w_rcol - Inches(0.6), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
     p_rst1 = tf_rs1.paragraphs[0]
     p_rst1.text = "Arbitrage Énergétique Direct"
     p_rst1.font.name = FONT_TITLE
-    p_rst1.font.size = Pt(15)
+    p_rst1.font.size = Pt(16)
     p_rst1.font.bold = True
     p_rst1.font.color.rgb = COLOR_CYAN
+    p_rst1.alignment = PP_ALIGN.CENTER
     p_rst1.space_after = Pt(8)
     p_rsb1 = tf_rs1.add_paragraph()
     p_rsb1.text = "Déplacement de 100% de la consommation de pointe vers les heures creuses nocturnes, permettant d'économiser sur les coûts de facture variables et fixes."
     p_rsb1.font.name = FONT_BODY
-    p_rsb1.font.size = Pt(10.5)
+    p_rsb1.font.size = Pt(12.5) # Increased for legibility
     p_rsb1.font.color.rgb = COLOR_WHITE
+    p_rsb1.alignment = PP_ALIGN.CENTER
     
     # Card 2
     draw_card_shape(slide3, Inches(7.4), Inches(4.5), w_rcol, Inches(2.4))
-    tf_rs2 = create_textbox_tf(slide3, Inches(7.7), Inches(4.7), w_rcol - Inches(0.6), Inches(2.0))
+    tf_rs2 = create_textbox_tf(slide3, Inches(7.7), Inches(4.7), w_rcol - Inches(0.6), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
     p_rst2 = tf_rs2.paragraphs[0]
     p_rst2.text = "Sécurisation Active (13h)"
     p_rst2.font.name = FONT_TITLE
-    p_rst2.font.size = Pt(15)
+    p_rst2.font.size = Pt(16)
     p_rst2.font.bold = True
     p_rst2.font.color.rgb = COLOR_CYAN
+    p_rst2.alignment = PP_ALIGN.CENTER
     p_rst2.space_after = Pt(8)
     p_rsb2 = tf_rs2.add_paragraph()
     p_rsb2.text = "En cas de délestage ou de panne, la batterie thermique prend le relais automatiquement pour maintenir le froid pendant plus de 13 heures, éliminant les pertes de marchandises."
     p_rsb2.font.name = FONT_BODY
-    p_rsb2.font.size = Pt(10.5)
+    p_rsb2.font.size = Pt(12.5) # Increased for legibility
     p_rsb2.font.color.rgb = COLOR_WHITE
+    p_rsb2.alignment = PP_ALIGN.CENTER
 
     # Visual left indicators for right cards
     ind1 = slide3.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(7.4), Inches(1.6), Inches(0.08), Inches(2.4))
@@ -436,8 +472,7 @@ def build_pitch_deck():
         # Fallback to other screenshot
         has_img4_fb = add_image_if_exists(slide4, "Capture d'écran 2026-07-08 182424.png", left=Inches(6.6), top=Inches(2.1), width=Inches(5.7), height=Inches(4.2))
         if not has_img4_fb:
-            # Placeholder text if no image
-            tf_p4 = create_textbox_tf(slide4, Inches(6.6), Inches(3.0), Inches(5.7), Inches(2.0))
+            tf_p4 = create_textbox_tf(slide4, Inches(6.6), Inches(3.0), Inches(5.7), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
             p_p4 = tf_p4.paragraphs[0]
             p_p4.text = "[ Capture d'écran du Simulateur Streamlit ]\n(Simulateur d'aide à la décision technique et financière)"
             p_p4.font.name = FONT_TITLE
@@ -472,7 +507,7 @@ def build_pitch_deck():
         # Fallback to other screenshot
         has_img5_fb = add_image_if_exists(slide5, "Capture d'écran 2026-07-08 182424.png", left=Inches(6.6), top=Inches(2.1), width=Inches(5.7), height=Inches(4.2))
         if not has_img5_fb:
-            tf_p5 = create_textbox_tf(slide5, Inches(6.6), Inches(3.0), Inches(5.7), Inches(2.0))
+            tf_p5 = create_textbox_tf(slide5, Inches(6.6), Inches(3.0), Inches(5.7), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
             p_p5 = tf_p5.paragraphs[0]
             p_p5.text = "[ Rendus SolidWorks & CAO ]\n(Batterie thermique, caisson modulaire et suspentes)"
             p_p5.font.name = FONT_TITLE
@@ -505,48 +540,54 @@ def build_pitch_deck():
     
     # Block 1: Sensors
     card_sens = draw_card_shape(slide6, left=Inches(7.3), top=Inches(2.0), width=Inches(4.7), height=Inches(1.15), bg_color=COLOR_CARD_BG, border_color=COLOR_CARD_BORDER)
-    tf_sens = create_textbox_tf(slide6, Inches(7.5), Inches(2.1), Inches(4.3), Inches(0.9))
+    tf_sens = create_textbox_tf(slide6, Inches(7.5), Inches(2.1), Inches(4.3), Inches(0.9), vertical_anchor=MSO_ANCHOR.MIDDLE)
     p_sens_title = tf_sens.paragraphs[0]
     p_sens_title.text = "1. Capteurs Thermiques (MCP & Air)"
     p_sens_title.font.name = "Segoe UI"
     p_sens_title.font.size = Pt(12)
     p_sens_title.font.bold = True
     p_sens_title.font.color.rgb = COLOR_CYAN
+    p_sens_title.alignment = PP_ALIGN.CENTER
     p_sens = tf_sens.add_paragraph()
     p_sens.text = "Mesure en continu des températures du MCP et de l'air pour calculer l'état de charge (SOC)."
     p_sens.font.name = "Segoe UI"
-    p_sens.font.size = Pt(10)
+    p_sens.font.size = Pt(11) # Increased size
     p_sens.font.color.rgb = COLOR_WHITE
+    p_sens.alignment = PP_ALIGN.CENTER
     
     # Block 2: PLC
     card_plc = draw_card_shape(slide6, left=Inches(7.3), top=Inches(3.5), width=Inches(4.7), height=Inches(1.15), bg_color=COLOR_NAVY, border_color=COLOR_CYAN)
-    tf_plc = create_textbox_tf(slide6, Inches(7.5), Inches(3.6), Inches(4.3), Inches(0.9))
+    tf_plc = create_textbox_tf(slide6, Inches(7.5), Inches(3.6), Inches(4.3), Inches(0.9), vertical_anchor=MSO_ANCHOR.MIDDLE)
     p_plc_title = tf_plc.paragraphs[0]
     p_plc_title.text = "2. Automate PLC & Écran IHM"
     p_plc_title.font.name = "Segoe UI"
     p_plc_title.font.size = Pt(12)
     p_plc_title.font.bold = True
     p_plc_title.font.color.rgb = COLOR_CYAN
+    p_plc_title.alignment = PP_ALIGN.CENTER
     p_plc = tf_plc.add_paragraph()
     p_plc.text = "Traitement des données, régulation PID, gestion des vannes et interface de contrôle opérateur."
     p_plc.font.name = "Segoe UI"
-    p_plc.font.size = Pt(10)
+    p_plc.font.size = Pt(11) # Increased size
     p_plc.font.color.rgb = COLOR_WHITE
+    p_plc.alignment = PP_ALIGN.CENTER
     
     # Block 3: Actuators / UPS
     card_act = draw_card_shape(slide6, left=Inches(7.3), top=Inches(5.0), width=Inches(4.7), height=Inches(1.15), bg_color=COLOR_CARD_BG, border_color=COLOR_CARD_BORDER)
-    tf_act = create_textbox_tf(slide6, Inches(7.5), Inches(5.1), Inches(4.3), Inches(0.9))
+    tf_act = create_textbox_tf(slide6, Inches(7.5), Inches(5.1), Inches(4.3), Inches(0.9), vertical_anchor=MSO_ANCHOR.MIDDLE)
     p_act_title = tf_act.paragraphs[0]
     p_act_title.text = "3. Ventilation & Onduleur UPS"
     p_act_title.font.name = "Segoe UI"
     p_act_title.font.size = Pt(12)
     p_act_title.font.bold = True
     p_act_title.font.color.rgb = COLOR_CYAN
+    p_act_title.alignment = PP_ALIGN.CENTER
     p_act = tf_act.add_paragraph()
     p_act.text = "Activation de la soufflerie (60W-120W) secourue par UPS (LiFePO4 1.6 kWh) pendant 13 heures de délestage."
     p_act.font.name = "Segoe UI"
-    p_act.font.size = Pt(10)
+    p_act.font.size = Pt(11) # Increased size
     p_act.font.color.rgb = COLOR_WHITE
+    p_act.alignment = PP_ALIGN.CENTER
 
     # =========================================================================
     # SLIDE 7: BUSINESS MODEL & ROI (Tableau de Rentabilité)
@@ -579,54 +620,55 @@ def build_pitch_deck():
     style_table_cell(table.cell(0, 2), "Impact Budgétaire", font_size=11, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_NAVY, align=PP_ALIGN.CENTER)
     
     # Row 1
-    style_table_cell(table.cell(1, 0), "Arbitrage Tarifaire", font_size=10, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_CARD_BG)
-    style_table_cell(table.cell(1, 1), "Consommation déplacée Heures Pleines → Heures Creuses (Sonelgaz)", font_size=9.5, text_color=COLOR_MUTED_TEXT, bg_color=COLOR_CARD_BG)
+    style_table_cell(table.cell(1, 0), "Arbitrage Tarifaire", font_size=10, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_CARD_BG, align=PP_ALIGN.CENTER)
+    style_table_cell(table.cell(1, 1), "Consommation déplacée Heures Pleines → Heures Creuses (Sonelgaz)", font_size=9.5, text_color=COLOR_MUTED_TEXT, bg_color=COLOR_CARD_BG, align=PP_ALIGN.CENTER)
     style_table_cell(table.cell(1, 2), "Économie de 30% sur le kWh", font_size=9.5, text_color=COLOR_GREEN, bg_color=COLOR_CARD_BG, align=PP_ALIGN.CENTER)
     
     # Row 2
-    style_table_cell(table.cell(2, 0), "Prime de Puissance", font_size=10, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_DARK_BG)
-    style_table_cell(table.cell(2, 1), "Réduction de la puissance souscrite indexée sur le volume de la chambre", font_size=9.5, text_color=COLOR_MUTED_TEXT, bg_color=COLOR_DARK_BG)
+    style_table_cell(table.cell(2, 0), "Prime de Puissance", font_size=10, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_DARK_BG, align=PP_ALIGN.CENTER)
+    style_table_cell(table.cell(2, 1), "Réduction de la puissance souscrite indexée sur le volume de la chambre", font_size=9.5, text_color=COLOR_MUTED_TEXT, bg_color=COLOR_DARK_BG, align=PP_ALIGN.CENTER)
     style_table_cell(table.cell(2, 2), "Gain annuel fixe", font_size=9.5, text_color=COLOR_GREEN, bg_color=COLOR_DARK_BG, align=PP_ALIGN.CENTER)
     
     # Row 3
-    style_table_cell(table.cell(3, 0), "Protection Anti-Panne", font_size=10, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_CARD_BG)
-    style_table_cell(table.cell(3, 1), "Sécurisation active du stock de marchandises face aux coupures", font_size=9.5, text_color=COLOR_MUTED_TEXT, bg_color=COLOR_CARD_BG)
+    style_table_cell(table.cell(3, 0), "Protection Anti-Panne", font_size=10, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_CARD_BG, align=PP_ALIGN.CENTER)
+    style_table_cell(table.cell(3, 1), "Sécurisation active du stock de marchandises face aux coupures", font_size=9.5, text_color=COLOR_MUTED_TEXT, bg_color=COLOR_CARD_BG, align=PP_ALIGN.CENTER)
     style_table_cell(table.cell(3, 2), "Pertes de stock éliminées", font_size=9.5, text_color=COLOR_GREEN, bg_color=COLOR_CARD_BG, align=PP_ALIGN.CENTER)
     
     # Row 4
-    style_table_cell(table.cell(4, 0), "Payback & Viabilité", font_size=10, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_DARK_BG)
-    style_table_cell(table.cell(4, 1), "Investissement amorti par les économies opérationnelles nettes", font_size=9.5, text_color=COLOR_MUTED_TEXT, bg_color=COLOR_DARK_BG)
+    style_table_cell(table.cell(4, 0), "Payback & Viabilité", font_size=10, bold=True, text_color=COLOR_WHITE, bg_color=COLOR_DARK_BG, align=PP_ALIGN.CENTER)
+    style_table_cell(table.cell(4, 1), "Investissement amorti par les économies opérationnelles nettes", font_size=9.5, text_color=COLOR_MUTED_TEXT, bg_color=COLOR_DARK_BG, align=PP_ALIGN.CENTER)
     style_table_cell(table.cell(4, 2), "Amortissement < 3 ans", font_size=9.5, bold=True, text_color=COLOR_CYAN, bg_color=COLOR_DARK_BG, align=PP_ALIGN.CENTER)
 
     # =========================================================================
-    # SLIDE 8: L'ÉQUIPE (ENPO-MA & ENPA Synergy)
+    # SLIDE 8: L'ÉQUIPE (Islem & Mohamed engineering contributions)
     # =========================================================================
     slide8 = prs.slides.add_slide(blank_layout)
     set_slide_background(slide8, COLOR_DARK_BG)
     add_slide_header(slide8, "Une Équipe Pluridisciplinaire Complète", "SYNERGIE & FORCE HUMAINE")
     
-    # Left Card: ENPO-MA
+    # Left Card: BOUIRA Islem Akram
     add_content_card(
         slide8,
         left=Inches(0.8), top=Inches(1.6), width=Inches(5.6), height=Inches(5.2),
-        title="Synergie ENPO-MA (Mécanique & Énergétique)",
+        title="BOUIRA Islem Akram",
         paragraphs=[
-            "• Modélisation Physique & Thermique : Analyse transitoire du changement de phase solide-liquide (MCP), résolution des équations de conduction et convection forcée.",
-            "• Conception Mécanique CAO : Conception complète de l'échangeur, des profilés d'ailettes en étoile SolidWorks et de la structure de supportage suspendue.",
-            "• Résistance des Matériaux (RDM) : Validation de la tenue mécanique des suspentes M14, calculs de flexion (flèche médiane) des tubes de 2m, et analyses DFM de fabrication locale."
+            "Étudiant en 5ème année mécanique (Système Énergétique) @ ENPO",
+            "• Modélisation Physique & Thermique : Analyse transitoire du changement de phase solide-liquide (MCP) et résolution des flux de chaleur.",
+            "• Conception Mécanique CAO : Conception de l'échangeur de chaleur, modélisation des ailettes en étoile, et système d'ancrage modulaire.",
+            "• Résistance des Matériaux (RDM) : Tenue mécanique des suspentes M14, flèche des cylindres et calculs DFM de fabrication locale."
         ]
     )
     
-    # Right Card: ENPA
+    # Right Card: ZANE Mohamed Elamine
     add_content_card(
         slide8,
         left=Inches(6.9), top=Inches(1.6), width=Inches(5.6), height=Inches(5.2),
-        title="Synergie ENPA (Électrotechnique & Automatisme)",
+        title="ZANE Mohamed Elamine",
         paragraphs=[
-            "• Conception de l'Armoire Électrique : Câblage de puissance, schémas de protection et intégration des contacteurs compresseurs et de la soufflerie.",
-            "• Programmation Automate (PLC) : Écriture de la logique de régulation, gestion PID des vannes, et détection automatique des coupures de courant.",
-            "• Interface IHM & Supervision : Conception de l'écran tactile pour le suivi des températures, de l'état de charge (SOC) et des historiques d'exploitation.",
-            "• Secours Électrique : Dimensionnement de l'UPS et du pack de batteries LiFePO4 de secours."
+            "Étudiant en 4ème année électrotechnique @ ENPA",
+            "• Armoire Électrique & Puissance : Conception du câblage de puissance, des relais thermiques et des sectionneurs de protection.",
+            "• Automatisme PLC & IHM : Écriture de la logique PID de régulation du basculement charge/décharge et interface de contrôle locale.",
+            "• Secours Électrique (UPS) : Dimensionnement et supervision du pack de batteries de secours LiFePO4 pour sécuriser la soufflerie en cas de panne."
         ]
     )
 
