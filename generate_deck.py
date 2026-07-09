@@ -37,11 +37,18 @@ FONT_TITLE = "Segoe UI"
 FONT_BODY = "Segoe UI"
 
 def set_slide_background(slide, color=COLOR_DARK_BG):
-    """Sets a solid background color for the slide."""
+    """Sets a solid background color for the slide and draws an elegant frame."""
     background = slide.background
     fill = background.fill
     fill.solid()
     fill.fore_color.rgb = color
+    
+    # Elegant outer thin frame for a professional visual wrap (only for dark slides)
+    if color == COLOR_DARK_BG:
+        frame = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.15), Inches(0.15), Inches(13.03), Inches(7.2))
+        frame.fill.background() # transparent background fill
+        frame.line.color.rgb = RGBColor(30, 41, 59) # Slate 800 dark border
+        frame.line.width = Pt(1.5)
 
 def add_slide_header(slide, title, category="KRYODROP | DECISION PITCH"):
     """Adds a standard header anchor to regular slides (excludes Title/Transition slides)."""
@@ -84,9 +91,16 @@ def draw_card_shape(slide, left, top, width, height, bg_color=COLOR_CARD_BG, bor
     return card
 
 def add_content_card(slide, left, top, width, height, title, paragraphs, title_color=COLOR_CYAN, bg_color=COLOR_CARD_BG, border_color=COLOR_CARD_BORDER):
-    """Creates a beautiful content card with centered title and body texts."""
+    """Creates a beautiful content card with centered title, body texts, and a glowing top accent bar."""
     # Draw card background
     draw_card_shape(slide, left, top, width, height, bg_color, border_color)
+    
+    # Elegant top accent bar
+    accent_height = Inches(0.08)
+    accent = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, accent_height)
+    accent.fill.solid()
+    accent.fill.fore_color.rgb = title_color
+    accent.line.fill.background()
     
     # Overlay a text box inset inside the card boundaries
     inset = Inches(0.3)
@@ -111,14 +125,21 @@ def add_content_card(slide, left, top, width, height, title, paragraphs, title_c
         p = tf.add_paragraph()
         p.text = p_text
         p.font.name = FONT_BODY
-        p.font.size = Pt(12.5) # Increased from 11 to 12.5 for clarity
+        p.font.size = Pt(11.5) # Adjusted slightly for 4" cards
         p.font.color.rgb = COLOR_WHITE
         p.alignment = PP_ALIGN.CENTER # Centered horizontally
         p.space_after = Pt(8)
 
 def add_stat_card(slide, left, top, width, height, value, label, value_color=COLOR_CYAN, bg_color=COLOR_CARD_BG):
-    """Creates a statistics callout card with a large number and label below it."""
+    """Creates a statistics callout card with a large number and label below it, with a top accent bar."""
     draw_card_shape(slide, left, top, width, height, bg_color, border_color=COLOR_CARD_BORDER)
+    
+    # Elegant top accent bar
+    accent_height = Inches(0.08)
+    accent = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, accent_height)
+    accent.fill.solid()
+    accent.fill.fore_color.rgb = value_color
+    accent.line.fill.background()
     
     inset = Inches(0.2)
     txBox = slide.shapes.add_textbox(left + inset, top + inset, width - (inset * 2), height - (inset * 2))
@@ -244,7 +265,7 @@ def build_pitch_deck():
     p_auth_title = tf_auth.paragraphs[0]
     p_auth_title.text = "PROJET DÉVELOPPÉ PAR :"
     p_auth_title.font.name = FONT_TITLE
-    p_auth_title.font.size = Pt(11)
+    p_auth_title.font.size = Pt(13)
     p_auth_title.font.bold = True
     p_auth_title.font.color.rgb = COLOR_CYAN
     p_auth_title.space_after = Pt(6)
@@ -252,7 +273,7 @@ def build_pitch_deck():
     p_a1 = tf_auth.add_paragraph()
     p_a1.text = "BOUIRA Islem Akram — Étudiant 5ème année mécanique (Systèmes Énergétiques) @ ENPO"
     p_a1.font.name = FONT_BODY
-    p_a1.font.size = Pt(11)
+    p_a1.font.size = Pt(12)
     p_a1.font.bold = True
     p_a1.font.color.rgb = COLOR_WHITE
     p_a1.space_after = Pt(4)
@@ -260,7 +281,7 @@ def build_pitch_deck():
     p_a2 = tf_auth.add_paragraph()
     p_a2.text = "ZANE Mohamed Elamine — Étudiant 4ème année électrotechnique @ ENPA"
     p_a2.font.name = FONT_BODY
-    p_a2.font.size = Pt(11)
+    p_a2.font.size = Pt(12)
     p_a2.font.bold = True
     p_a2.font.color.rgb = COLOR_WHITE
     
@@ -455,8 +476,8 @@ def build_pitch_deck():
     # Left Card: Value of Simulator
     add_content_card(
         slide4,
-        left=Inches(0.8), top=Inches(1.6), width=Inches(5.2), height=Inches(5.2),
-        title="Dimensionnement Sur-Mesure par Algorithme",
+        left=Inches(0.6), top=Inches(1.6), width=Inches(4.0), height=Inches(5.2),
+        title="Dimensionnement Sur-Mesure",
         paragraphs=[
             "• Modélisation Physique Rigoureuse : Notre simulateur Streamlit intègre les équations de transfert thermique transitoire à changement de phase (Stefan) et calcule la masse de MCP requise.",
             "• Base Climatique Algérienne : Intégration des données réelles des 58 wilayas d'Algérie pour évaluer les charges d'infiltration d'air lors des ouvertures de porte.",
@@ -466,13 +487,13 @@ def build_pitch_deck():
     )
     
     # Right Image Card Container
-    draw_card_shape(slide4, left=Inches(6.4), top=Inches(1.6), width=Inches(6.1), height=Inches(5.2), border_color=COLOR_CYAN)
-    has_img4 = add_image_if_exists(slide4, "streamlit_app.png", left=Inches(6.6), top=Inches(2.1), width=Inches(5.7), height=Inches(4.2))
+    draw_card_shape(slide4, left=Inches(4.8), top=Inches(1.6), width=Inches(7.9), height=Inches(5.2), border_color=COLOR_CYAN)
+    has_img4 = add_image_if_exists(slide4, "streamlit_app.png", left=Inches(4.9), top=Inches(1.8), width=Inches(7.7), height=Inches(4.8))
     if not has_img4:
         # Fallback to other screenshot
-        has_img4_fb = add_image_if_exists(slide4, "Capture d'écran 2026-07-08 182424.png", left=Inches(6.6), top=Inches(2.1), width=Inches(5.7), height=Inches(4.2))
+        has_img4_fb = add_image_if_exists(slide4, "Capture d'écran 2026-07-08 182424.png", left=Inches(4.9), top=Inches(1.8), width=Inches(7.7), height=Inches(4.8))
         if not has_img4_fb:
-            tf_p4 = create_textbox_tf(slide4, Inches(6.6), Inches(3.0), Inches(5.7), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
+            tf_p4 = create_textbox_tf(slide4, Inches(4.9), Inches(3.0), Inches(7.7), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
             p_p4 = tf_p4.paragraphs[0]
             p_p4.text = "[ Capture d'écran du Simulateur Streamlit ]\n(Simulateur d'aide à la décision technique et financière)"
             p_p4.font.name = FONT_TITLE
@@ -490,8 +511,8 @@ def build_pitch_deck():
     # Left Card
     add_content_card(
         slide5,
-        left=Inches(0.8), top=Inches(1.6), width=Inches(5.2), height=Inches(5.2),
-        title="Un Design Optimisé pour la Fabrication (DFM)",
+        left=Inches(0.6), top=Inches(1.6), width=Inches(4.0), height=Inches(5.2),
+        title="Design Optimisé (DFM)",
         paragraphs=[
             "• Caisson Modulaire & Système Drop-In : Conçu pour s'installer rapidement au plafond des chambres froides industrielles, sans perturber la disposition du stock.",
             "• Dégagement des Ailettes : Profil d'ailettes en étoile (8 externes, 8 internes, L=20mm, e=2mm) avec un entraxe de 50mm anti-givre pour maintenir le flux d'air.",
@@ -501,112 +522,137 @@ def build_pitch_deck():
     )
     
     # Right Image Card Container for SolidWorks Renders
-    draw_card_shape(slide5, left=Inches(6.4), top=Inches(1.6), width=Inches(6.1), height=Inches(5.2), border_color=COLOR_CYAN)
-    has_img5 = add_image_if_exists(slide5, "Capture d'écran 2026-07-08 192651.png", left=Inches(6.6), top=Inches(2.1), width=Inches(5.7), height=Inches(4.2))
+    draw_card_shape(slide5, left=Inches(4.8), top=Inches(1.6), width=Inches(7.9), height=Inches(5.2), border_color=COLOR_CYAN)
+    has_img5 = add_image_if_exists(slide5, "Capture d'écran 2026-07-08 192651.png", left=Inches(4.9), top=Inches(1.8), width=Inches(7.7), height=Inches(4.8))
     if not has_img5:
         # Fallback to other screenshot
-        has_img5_fb = add_image_if_exists(slide5, "Capture d'écran 2026-07-08 182424.png", left=Inches(6.6), top=Inches(2.1), width=Inches(5.7), height=Inches(4.2))
+        has_img5_fb = add_image_if_exists(slide5, "Capture d'écran 2026-07-08 182424.png", left=Inches(4.9), top=Inches(1.8), width=Inches(7.7), height=Inches(4.8))
         if not has_img5_fb:
-            tf_p5 = create_textbox_tf(slide5, Inches(6.6), Inches(3.0), Inches(5.7), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
+            tf_p5 = create_textbox_tf(slide5, Inches(4.9), Inches(3.0), Inches(7.7), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
             p_p5 = tf_p5.paragraphs[0]
             p_p5.text = "[ Rendus SolidWorks & CAO ]\n(Batterie thermique, caisson modulaire et suspentes)"
             p_p5.font.name = FONT_TITLE
             p_p5.font.size = Pt(14)
             p_p5.alignment = PP_ALIGN.CENTER
-            p_p5.font.color.rgb = COLOR_MUTED_TEXT
-
-    # =========================================================================
-    # SLIDE 6: INTELLIGENCE ÉLECTRIQUE (PLC / IHM / Automation)
+            p_p5.font.color.rgb = COLOR_MUTED_TEXT    # =========================================================================
+    # SLIDE 6: ARCHITECTURE ÉLECTROTECHNIQUE & INSTRUMENTATION
     # =========================================================================
     slide6 = prs.slides.add_slide(blank_layout)
     set_slide_background(slide6, COLOR_DARK_BG)
-    add_slide_header(slide6, "Contrôle-Commande & Automatisation", "INTELLIGENCE ÉLECTRIQUE")
+    add_slide_header(slide6, "Architecture Électrotechnique & Instrumentation", "INTELLIGENCE ÉLECTRIQUE")
     
     # Left Card
     add_content_card(
         slide6,
         left=Inches(0.8), top=Inches(1.6), width=Inches(5.6), height=Inches(5.2),
-        title="Le Cerveau Électrique et Régulation",
+        title="Le Cerveau Industriel Siemens S7-1200",
         paragraphs=[
-            "• Automate Industriel (PLC) : Régulation intelligente PID des flux thermiques. Basculement automatique entre les phases de charge nocturne et de décharge diurne.",
-            "• Interface IHM (Écran Tactile) : Supervision locale et affichage en temps réel de l'état de charge (SOC) de la batterie thermique et des températures MCP.",
-            "• Gestion de Secours Intégrée : En cas de coupure réseau, l'automate pilote le passage instantané de la ventilation sur l'onduleur de secours (UPS) pour continuer à diffuser le froid stocké.",
-            "• Protection Électrique : Coffret câblé selon les normes industrielles avec sectionneurs, relais thermiques et contacteurs de puissance."
+            "• Cas de Référence Soummam : Solution conçue pour décarboner la logistique froide (20 000 m³ de stockage, 110 chambres froides, 1 200 camions frigorifiques) en Algérie.",
+            "• Technologie Scroll Optimale : Choix de compresseurs Scroll triphasés (1.5 à 3.5 kW) des marques de référence Bitzer, Copeland, Danfoss.",
+            "• Instrumentation Terrain : Sondes de température PT100 (RTD classe A) pour le suivi de charge du MCP et analyseur de réseau sur le secteur principal.",
+            "• Commande Centralisée : Automate Siemens S7-1200 avec cartes d'extension analogiques régulant l'ensemble par boucle de contrôle fermée."
         ]
     )
     
-    # Right Card: Schematic blocks representations
-    draw_card_shape(slide6, left=Inches(6.8), top=Inches(1.6), width=Inches(5.7), height=Inches(5.2))
-    
-    # Block 1: Sensors
-    card_sens = draw_card_shape(slide6, left=Inches(7.3), top=Inches(2.0), width=Inches(4.7), height=Inches(1.15), bg_color=COLOR_CARD_BG, border_color=COLOR_CARD_BORDER)
-    tf_sens = create_textbox_tf(slide6, Inches(7.5), Inches(2.1), Inches(4.3), Inches(0.9), vertical_anchor=MSO_ANCHOR.MIDDLE)
-    p_sens_title = tf_sens.paragraphs[0]
-    p_sens_title.text = "1. Capteurs Thermiques (MCP & Air)"
-    p_sens_title.font.name = "Segoe UI"
-    p_sens_title.font.size = Pt(12)
-    p_sens_title.font.bold = True
-    p_sens_title.font.color.rgb = COLOR_CYAN
-    p_sens_title.alignment = PP_ALIGN.CENTER
-    p_sens = tf_sens.add_paragraph()
-    p_sens.text = "Mesure en continu des températures du MCP et de l'air pour calculer l'état de charge (SOC)."
-    p_sens.font.name = "Segoe UI"
-    p_sens.font.size = Pt(11) # Increased size
-    p_sens.font.color.rgb = COLOR_WHITE
-    p_sens.alignment = PP_ALIGN.CENTER
-    
-    # Block 2: PLC
-    card_plc = draw_card_shape(slide6, left=Inches(7.3), top=Inches(3.5), width=Inches(4.7), height=Inches(1.15), bg_color=COLOR_NAVY, border_color=COLOR_CYAN)
-    tf_plc = create_textbox_tf(slide6, Inches(7.5), Inches(3.6), Inches(4.3), Inches(0.9), vertical_anchor=MSO_ANCHOR.MIDDLE)
-    p_plc_title = tf_plc.paragraphs[0]
-    p_plc_title.text = "2. Automate PLC & Écran IHM"
-    p_plc_title.font.name = "Segoe UI"
-    p_plc_title.font.size = Pt(12)
-    p_plc_title.font.bold = True
-    p_plc_title.font.color.rgb = COLOR_CYAN
-    p_plc_title.alignment = PP_ALIGN.CENTER
-    p_plc = tf_plc.add_paragraph()
-    p_plc.text = "Traitement des données, régulation PID, gestion des vannes et interface de contrôle opérateur."
-    p_plc.font.name = "Segoe UI"
-    p_plc.font.size = Pt(11) # Increased size
-    p_plc.font.color.rgb = COLOR_WHITE
-    p_plc.alignment = PP_ALIGN.CENTER
-    
-    # Block 3: Actuators / UPS
-    card_act = draw_card_shape(slide6, left=Inches(7.3), top=Inches(5.0), width=Inches(4.7), height=Inches(1.15), bg_color=COLOR_CARD_BG, border_color=COLOR_CARD_BORDER)
-    tf_act = create_textbox_tf(slide6, Inches(7.5), Inches(5.1), Inches(4.3), Inches(0.9), vertical_anchor=MSO_ANCHOR.MIDDLE)
-    p_act_title = tf_act.paragraphs[0]
-    p_act_title.text = "3. Ventilation & Onduleur UPS"
-    p_act_title.font.name = "Segoe UI"
-    p_act_title.font.size = Pt(12)
-    p_act_title.font.bold = True
-    p_act_title.font.color.rgb = COLOR_CYAN
-    p_act_title.alignment = PP_ALIGN.CENTER
-    p_act = tf_act.add_paragraph()
-    p_act.text = "Activation de la soufflerie (60W-120W) secourue par UPS (LiFePO4 1.6 kWh) pendant 13 heures de délestage."
-    p_act.font.name = "Segoe UI"
-    p_act.font.size = Pt(11) # Increased size
-    p_act.font.color.rgb = COLOR_WHITE
-    p_act.alignment = PP_ALIGN.CENTER
+    # Right Card: Bilan des puissances & Secours
+    add_content_card(
+        slide6,
+        left=Inches(6.8), top=Inches(1.6), width=Inches(5.7), height=Inches(5.2),
+        title="Bilan des Puissances & Secours (UPS)",
+        paragraphs=[
+            "• Ventilation Forcée Active : Soufflerie de 15W par module, consommant un total extrêmement bas de 120W à 240W (négligeable face au compresseur de 15 kW).",
+            "• Onduleur de Secours (UPS) : Dimensionnement d'un onduleur Line-Interactive de 1000 VA pour maintenir la ventilation active en cas de coupure de courant.",
+            "• Technologie Batterie LiFePO4 : Pack de batteries lithium-fer-phosphate (48V / 25Ah ou 12V / 100Ah) supportant 80% de décharge profonde pour assurer 13h d'autonomie électrique.",
+            "• Sécurité Maximale : Chimie LiFePO4 hautement stable thermiquement pour une installation sûre en local technique industriel."
+        ],
+        title_color=COLOR_CYAN,
+        bg_color=COLOR_CARD_BG,
+        border_color=COLOR_CYAN
+    )
 
     # =========================================================================
-    # SLIDE 7: BUSINESS MODEL & ROI (Tableau de Rentabilité)
+    # SLIDE 7: SCHÉMA ÉLECTRIQUE DE PRINCIPE (AutoCAD)
     # =========================================================================
     slide7 = prs.slides.add_slide(blank_layout)
     set_slide_background(slide7, COLOR_DARK_BG)
-    add_slide_header(slide7, "Une Solution Rentable aux Amortissements Rapides", "BUSINESS MODEL & ROI")
+    add_slide_header(slide7, "Schéma Électrique de Principe (AutoCAD)", "SCHÉMA UNIFILAIRE INDUSTRIEL")
+    
+    # Left Card
+    add_content_card(
+        slide7,
+        left=Inches(0.6), top=Inches(1.6), width=Inches(4.0), height=Inches(5.2),
+        title="Câblage Commande & Puissance",
+        paragraphs=[
+            "• Circuit de Puissance : Alimentation réseau triphasé 400V, disjoncteur moteur pour le compresseur Scroll, contacteur de ligne KM et disjoncteurs bipolaires pour les ventilateurs (220V).",
+            "• Circuit de Commande : Alimentation 24V DC pour l'automate S7-1200, entrées analogiques pour PT100 et sorties digitales relayées pour le pilotage des contacteurs KM, KM1 (évaporateur) et KM2 (condenseur).",
+            "• Protection Électrique : Coffret équipé de relais thermiques, de sectionneurs de protection et d'un bouton d'arrêt d'urgence direct.",
+            "• Prêt pour Production : Plan unifilaire AutoCAD directement exploitable par les tableautiers et électriciens."
+        ]
+    )
+    
+    # Right Image Card Container
+    draw_card_shape(slide7, left=Inches(4.8), top=Inches(1.6), width=Inches(7.9), height=Inches(5.2), border_color=COLOR_CYAN)
+    has_img7 = add_image_if_exists(slide7, "autocad_schema_page_1.png", left=Inches(4.9), top=Inches(1.8), width=Inches(7.7), height=Inches(4.8))
+    if not has_img7:
+        tf_p7 = create_textbox_tf(slide7, Inches(4.9), Inches(3.0), Inches(7.7), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
+        p_p7 = tf_p7.paragraphs[0]
+        p_p7.text = "[ Schéma Électrique AutoCAD ]\n(Fichier: shema autocad  (comand +paussance)-Model.pdf)"
+        p_p7.font.name = FONT_TITLE
+        p_p7.font.size = Pt(14)
+        p_p7.alignment = PP_ALIGN.CENTER
+        p_p7.font.color.rgb = COLOR_MUTED_TEXT
+ 
+    # =========================================================================
+    # SLIDE 8: LOGIQUE DE RÉGULATION - GRAFCET (FINAL)
+    # =========================================================================
+    slide8 = prs.slides.add_slide(blank_layout)
+    set_slide_background(slide8, COLOR_DARK_BG)
+    add_slide_header(slide8, "Logique de Décision Smart-Grid (Grafcet Final)", "LOGIQUE DE COMMANDE / GRAFCET")
+    
+    # Left Card
+    add_content_card(
+        slide8,
+        left=Inches(0.6), top=Inches(1.6), width=Inches(4.0), height=Inches(5.2),
+        title="Algorithme à 4 États Opérationnels",
+        paragraphs=[
+            "• Étape X0 (Veille) : Compresseur et ventilateur condenseur éteints (KM=0, KM2=0). Ventilateur évaporateur actif en continu (KM1=1) pour diffuser le froid du MCP.",
+            "• Étape X1 (Charge Nocturne) : Compresseur, condenseur et évaporateur actifs (KM=1, KM1=1, KM2=1) pour solidifier le MCP sous tarif Heures Creuses.",
+            "• Étape X2 (Délestage Réseau) : Coupure secteur détectée. Compresseur et condenseur OFF. Soufflerie secourue par l'onduleur UPS.",
+            "• Étape X3 (Effacement Heures Pleines) : Compresseur éteint (KM=0) durant les tarifs de pointe. Restitution froide exclusive par fusion du MCP.",
+            "• Priorité Réseau (T2) : La perte secteur interrompt instantanément n'importe quelle phase en cours pour protéger les équipements."
+        ]
+    )
+    
+    # Right Image Card Container
+    draw_card_shape(slide8, left=Inches(4.8), top=Inches(1.6), width=Inches(7.9), height=Inches(5.2), border_color=COLOR_CYAN)
+    has_img8 = add_image_if_exists(slide8, "grafcet_mcp_final.png", left=Inches(4.9), top=Inches(1.8), width=Inches(7.7), height=Inches(4.8))
+    if not has_img8:
+        tf_p8 = create_textbox_tf(slide8, Inches(4.9), Inches(3.0), Inches(7.7), Inches(2.0), vertical_anchor=MSO_ANCHOR.MIDDLE)
+        p_p8 = tf_p8.paragraphs[0]
+        p_p8.text = "[ Diagramme de Régulation Grafcet ]\n(Fichier: grafcet_mcp_final.html)"
+        p_p8.font.name = FONT_TITLE
+        p_p8.font.size = Pt(14)
+        p_p8.alignment = PP_ALIGN.CENTER
+        p_p8.font.color.rgb = COLOR_MUTED_TEXT
+
+    # =========================================================================
+    # SLIDE 9: BUSINESS MODEL & ROI (Tableau de Rentabilité)
+    # =========================================================================
+    slide9 = prs.slides.add_slide(blank_layout)
+    set_slide_background(slide9, COLOR_DARK_BG)
+    add_slide_header(slide9, "Une Solution Rentable aux Amortissements Rapides", "BUSINESS MODEL & ROI")
     
     # Left Stats Column
-    add_stat_card(slide7, left=Inches(0.8), top=Inches(1.6), width=Inches(4.0), height=Inches(1.6), value="< 3 Ans", label="Temps de Retour Simple (Payback)", value_color=COLOR_GREEN)
-    add_stat_card(slide7, left=Inches(0.8), top=Inches(3.4), width=Inches(4.0), height=Inches(1.6), value="> 25 %", label="Taux de Rentabilité Interne (TRI)", value_color=COLOR_GREEN)
-    add_stat_card(slide7, left=Inches(0.8), top=Inches(5.2), width=Inches(4.0), height=Inches(1.6), value="VAN > 0", label="Valeur Actuelle Nette (Projet Rentable)", value_color=COLOR_GREEN)
+    add_stat_card(slide9, left=Inches(0.8), top=Inches(1.6), width=Inches(4.0), height=Inches(1.6), value="< 3 Ans", label="Temps de Retour Simple (Payback)", value_color=COLOR_GREEN)
+    add_stat_card(slide9, left=Inches(0.8), top=Inches(3.4), width=Inches(4.0), height=Inches(1.6), value="> 25 %", label="Taux de Rentabilité Interne (TRI)", value_color=COLOR_GREEN)
+    add_stat_card(slide9, left=Inches(0.8), top=Inches(5.2), width=Inches(4.0), height=Inches(1.6), value="VAN > 0", label="Valeur Actuelle Nette (Projet Rentable)", value_color=COLOR_GREEN)
     
     # Right Table Card
-    draw_card_shape(slide7, left=Inches(5.2), top=Inches(1.6), width=Inches(7.3), height=Inches(5.2))
+    draw_card_shape(slide9, left=Inches(5.2), top=Inches(1.6), width=Inches(7.3), height=Inches(5.2))
     
     # Add PowerPoint Table
     rows, cols = 5, 3
-    table_shape = slide7.shapes.add_table(rows, cols, Inches(5.4), Inches(2.0), Inches(6.9), Inches(4.4))
+    table_shape = slide9.shapes.add_table(rows, cols, Inches(5.4), Inches(2.0), Inches(6.9), Inches(4.4))
     table = table_shape.table
     
     # Set columns width
@@ -640,15 +686,15 @@ def build_pitch_deck():
     style_table_cell(table.cell(4, 2), "Amortissement < 3 ans", font_size=9.5, bold=True, text_color=COLOR_CYAN, bg_color=COLOR_DARK_BG, align=PP_ALIGN.CENTER)
 
     # =========================================================================
-    # SLIDE 8: L'ÉQUIPE (Islem & Mohamed engineering contributions)
+    # SLIDE 10: L'ÉQUIPE (Islem & Mohamed engineering contributions)
     # =========================================================================
-    slide8 = prs.slides.add_slide(blank_layout)
-    set_slide_background(slide8, COLOR_DARK_BG)
-    add_slide_header(slide8, "Une Équipe Pluridisciplinaire Complète", "SYNERGIE & FORCE HUMAINE")
+    slide10 = prs.slides.add_slide(blank_layout)
+    set_slide_background(slide10, COLOR_DARK_BG)
+    add_slide_header(slide10, "Une Équipe Pluridisciplinaire Complète", "SYNERGIE & FORCE HUMAINE")
     
     # Left Card: BOUIRA Islem Akram
     add_content_card(
-        slide8,
+        slide10,
         left=Inches(0.8), top=Inches(1.6), width=Inches(5.6), height=Inches(5.2),
         title="BOUIRA Islem Akram",
         paragraphs=[
@@ -661,7 +707,7 @@ def build_pitch_deck():
     
     # Right Card: ZANE Mohamed Elamine
     add_content_card(
-        slide8,
+        slide10,
         left=Inches(6.9), top=Inches(1.6), width=Inches(5.6), height=Inches(5.2),
         title="ZANE Mohamed Elamine",
         paragraphs=[
@@ -677,6 +723,5 @@ def build_pitch_deck():
     prs.save(output_filename)
     print(f"\n[SUCCESS] Pitch deck generated successfully: '{output_filename}'")
     print(f"Absolute path: {os.path.abspath(output_filename)}")
-
 if __name__ == "__main__":
     build_pitch_deck()

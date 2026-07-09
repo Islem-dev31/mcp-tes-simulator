@@ -326,7 +326,7 @@ st.markdown(f"""
         <div style="flex: 3; min-width: 300px;">
             <span class="hero-badge">Greentech Challenge 2026</span>
             <h1 class="hero-title">KryoDrop</h1>
-            <p class="hero-subtitle">ThermaShift : Le stockage thermique intelligent pour l'agro-industrie</p>
+            <p class="hero-subtitle">KryoDrop : Le stockage thermique intelligent pour la chaîne du froid</p>
             <p class="hero-text">
                 KryoDrop est une batterie thermique modulaire de stockage de froid (MCP-TES) conçue en Algérie. 
                 Notre jumeau numérique calcule instantanément le co-dimensionnement optimal pour effacer 100% de votre consommation de pointe diurne, 
@@ -368,7 +368,8 @@ st.markdown("""
 # ==============================================================================
 import os
 sidebar_logo = "logo_icon.png" if os.path.exists("logo_icon.png") else "logo5.png"
-st.sidebar.image(sidebar_logo, width=110)
+st.sidebar.image(sidebar_logo, width=70)
+st.sidebar.markdown("<h2 style='color:#1B365D; font-size:1.6rem; font-weight:800; margin-top:5px; margin-bottom:0;'>KryoDrop</h2><p style='color:#29B6D8; font-size:0.8rem; font-weight:600; margin-top:0; margin-bottom:20px;'>Le stockage thermique intelligent</p>", unsafe_allow_html=True)
 st.sidebar.markdown("<h3 style='color:#1B365D; margin-top: 10px; margin-bottom: 20px;'><i class='fa-solid fa-sliders'></i> Configuration</h3>", unsafe_allow_html=True)
 
 # Choix de la ville algérienne
@@ -707,6 +708,79 @@ m_pcm_required = e_required_joules / config.L_F
 # Delta T moteur de transfert basé sur la température de fusion réglée
 delta_t_driving = t_target - t_fusion_pcm
 
+# Validation du delta T moteur (HCD Guardrail)
+if delta_t_driving <= 0:
+    st.error("⚠️ **Erreur de dimensionnement physique** : La température de fusion du MCP doit être strictement inférieure à la température cible de la chambre froide ($T_{\\text{fusion}} < T_{\\text{cible}}$) pour permettre le transfert de froid. Veuillez ajuster les paramètres de température.")
+    st.stop()
+
+# --- FONCTION CENTRALISÉE DE CALCUL DES COÛTS DU SYSTÈME (BOM) ---
+def calculate_system_costs(m_al_total, m_pcm_required, n_modules, n_racks, ventilation_on, include_electrical=True):
+    # Coût des profilés extrudés en Aluminium
+    c_al = m_al_total * 1500.0
+    
+    # Coût de la paraffine organique (MCP) avec marge de 10%
+    m_pcm_total_filled = m_pcm_required * 1.10
+    c_pcm = m_pcm_total_filled * 400.0
+    
+    # Coût des bouchons (1 bouchon par module/cylindre)
+    n_bouchons = int(n_modules * 1)
+    c_bouchons = n_bouchons * 500.0
+    
+    # Coût des bagues d'isolation EPDM (2 bagues par module/cylindre)
+    n_bagues = int(n_modules * 2)
+    c_bagues = n_bagues * 100.0
+    
+    # Coût fixe par rack de structure de supportage
+    c_cadres = n_racks * 12000.0  # Cadres acier galvanisé
+    
+    # Barres de renfort flexion (3 métalliques + 3 PE-HD isolantes par rack)
+    n_barres_metal = int(n_racks * 3)
+    n_barres_pehd = int(n_racks * 3)
+    c_barres_metal = n_barres_metal * 2500.0
+    c_barres_pehd = n_barres_pehd * 1500.0
+    
+    # Quincaillerie et suspension M14
+    c_quinc = n_racks * 3000.0
+    
+    # Main d'œuvre d'assemblage / soudure / remplissage
+    c_mo = n_racks * 20000.0
+    
+    # Système de ventilation active (si ON)
+    c_vent = 15000.0 if ventilation_on == "ON" else 0.0
+    
+    # --- ESTIMATION DU SYSTÈME ÉLECTRIQUE & AUTOMATISATION ---
+    if include_electrical:
+        c_elec_plc = 85000.0      # Siemens S7-1200 CPU 1214C + module d'entrées analogiques + IHM
+        c_elec_ups = 65000.0      # Pack Batterie UPS LiFePO4 de secours + chargeur/onduleur 1000VA
+        c_elec_sensors = 25000.0  # Instrumentation terrain (4 sondes PT100 Classe A + câblage blindé)
+        c_elec_cabinet = 45000.0  # Coffret électrique de commande/puissance (sectionneurs, relais)
+        c_elec_service = 50000.0  # Main d'œuvre câblage armoire, programmation PLC & mise en service
+        c_electrical_total = c_elec_plc + c_elec_ups + c_elec_sensors + c_elec_cabinet + c_elec_service
+    else:
+        c_electrical_total = 0.0
+        
+    c_total = (c_al + c_pcm + c_bouchons + c_bagues + c_cadres + 
+               c_barres_metal + c_barres_pehd + c_quinc + c_mo + c_vent + c_electrical_total)
+    
+    return {
+        "c_al": c_al,
+        "c_pcm": c_pcm,
+        "n_bouchons": n_bouchons,
+        "c_bouchons": c_bouchons,
+        "n_bagues": n_bagues,
+        "c_bagues": c_bagues,
+        "c_cadres": c_cadres,
+        "n_barres_metal": n_barres_metal,
+        "c_barres_metal": c_barres_metal,
+        "n_barres_pehd": n_barres_pehd,
+        "c_barres_pehd": c_barres_pehd,
+        "c_quinc": c_quinc,
+        "c_mo": c_mo,
+        "c_vent": c_vent,
+        "c_electrical_total": c_electrical_total,
+        "c_total": c_total
+    }
+
 # ==============================================================================
 # 3. MODÉLISATION DE LA GRILLE DE CYLINDRES
 # ==============================================================================
@@ -754,12 +828,17 @@ for d_cyl_mm in dia_opts:
                 continue # Rejeter la configuration car non fabricable
             # -------------------------------------------------------------
             
-            # Exclure dynamiquement les configurations non physiques ou ne respectant pas le critère anti-givre (12 mm min aux pointes d'ailettes d'un même tube)
+            # Exclure dynamiquement les configurations non physiques ou ne respectant pas les critères anti-givre et fabricabilité
             if n_fins > 0:
                 spacing_ext_tip_check = (math.pi * (d_cyl_mm + 2.0 * l_fin_mm) - n_fins * t_fin * 1000.0) / n_fins
+                spacing_int_tip_check = (math.pi * (d_inner * 1000.0 - 2.0 * l_fin_mm) - n_fins * t_fin * 1000.0) / n_fins
                 spacing_int_base_check = (math.pi * d_inner * 1000.0 - n_fins * t_fin * 1000.0) / n_fins
-                if spacing_ext_tip_check < 12.0 or spacing_int_base_check <= 0.0:
+                if spacing_ext_tip_check < 50.0 or spacing_int_tip_check < 12.0 or spacing_int_base_check <= 0.0:
                     continue
+            else:
+                spacing_ext_tip_check = 999.0
+                spacing_int_tip_check = d_inner * 1000.0
+                spacing_int_base_check = d_inner * 1000.0
                 
             current_fin_thickness = 0.0 if n_fins == 0 else t_fin
             for vent in vent_opts:
@@ -821,13 +900,10 @@ for d_cyl_mm in dia_opts:
                     # Nombre de cylindres (parfaitement cohérent avec la longueur physique totale construite)
                     n_modules = total_length_physical / l_cyl
                     
-                    # Coût total calculé de manière industrielle (BOM)
+                    # Coût total calculé de manière industrielle (BOM centralisé)
                     n_racks = math.ceil(n_modules / 20.0)
-                    cout_fixed_per_rack = 12000.0 + 4500.0 + 3000.0 + 20000.0  # cadres + PE-HD + quincaillerie + MO/soudure
-                    cout_fixed_per_module = 2.0 * 500.0 + 2.0 * 100.0        # bouchons + bagues EPDM
-                    cout_total = (m_al_total * config.PRIX_AL_BASE) + (m_pcm_required * 1.10 * config.PRIX_MCP_BASE) + (n_modules * cout_fixed_per_module) + (n_racks * cout_fixed_per_rack)
-                    if vent == "ON":
-                        cout_total += config.SURCOUT_VENTILATION
+                    cost_breakdown = calculate_system_costs(m_al_total, m_pcm_required, n_modules, n_racks, vent)
+                    cout_total = cost_breakdown["c_total"]
                         
                     # Économie d'énergie Sonelgaz (DA/an) - Arbitrage (basé sur la charge MOYENNE ANNUELLE pour la crédibilité du ROI)
                     p_elec_saved = q_load_mean / (cop * 1000.0)
@@ -914,6 +990,7 @@ for d_cyl_mm in dia_opts:
                         "L_Fin_mm": l_fin_mm,
                         "Puits_Central_mm": puits_central_mm,
                         "Aspect_Ratio": aspect_ratio,
+                        "Spacing_Ext_Tip_mm": spacing_ext_tip_check,
                         "Ventilation": vent,
                         "L_Cyl_m": l_cyl,
                         "Q_Load_Total_W": q_load_total,
@@ -1093,7 +1170,7 @@ else:
         col_dfm1, col_dfm2 = st.columns([1, 2])
         
         with col_dfm1:
-            st.markdown("##### <i class='fa-solid fa-gauge-high' style='color:#29B6D8; margin-right:6px;'></i> Indicateurs de Fabricabilité DFM / RDM")
+            st.markdown("##### <i class='fa-solid fa-gauge-high' style='color:#29B6D8; margin-right:6px;'></i> Indicateurs de Fabricabilité DFM / RDM", unsafe_allow_html=True)
             
             # Puits central
             puits_status = "dfm-ok" if best_conf.get('Puits_Central_mm', 0.0) >= config.DFM_PUITS_CENTRAL_MIN_MM else "dfm-fail"
@@ -1117,8 +1194,21 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
+            # Espacement externe anti-givre
+            spacing_val = best_conf.get('Spacing_Ext_Tip_mm', 999.0)
+            spacing_display = f"{spacing_val:.1f} mm" if spacing_val < 990.0 else "N/A"
+            spacing_status = "dfm-ok" if spacing_val >= 50.0 else "dfm-fail"
+            spacing_icon = "fa-check" if spacing_val >= 50.0 else "fa-xmark"
+            st.markdown(f"""
+            <div class="dfm-card">
+                <p style="margin:0; font-size: 0.9rem; color: #555;">Espacement Anti-Givre aux Pointes (mm)</p>
+                <h2 style="margin:0; color: #1B365D;">{spacing_display}</h2>
+                <div class="dfm-badge {spacing_status}"><i class="fa-solid {spacing_icon}"></i> GARDE-FOU (Min 50mm)</div>
+            </div>
+            """, unsafe_allow_html=True)
+
         with col_dfm2:
-            st.markdown("##### <i class='fa-solid fa-list-check' style='color:#29B6D8; margin-right:6px;'></i> Nomenclature Mécanique Validée pour SolidWorks")
+            st.markdown("##### <i class='fa-solid fa-list-check' style='color:#29B6D8; margin-right:6px;'></i> Nomenclature Mécanique Validée pour SolidWorks", unsafe_allow_html=True)
             st.markdown(f"""
             <ul style="line-height: 1.8; font-size: 0.95rem; margin-top: 10px; padding-left: 20px;">
                 <li><b>Le Cylindre Extrudé :</b> Tube Ø <code>{best_conf['D_Cyl_mm']:.0f} mm</code> comportant <b>exactement {int(best_conf['N_Fins'])} ailettes longitudinales radiales</b>. Les ailettes internes et externes sont parfaitement <b>alignées</b> pour créer un pont thermique direct.</li>
@@ -1266,23 +1356,31 @@ else:
         st.markdown("##### <i class='fa-solid fa-file-invoice-dollar' style='color:#1B365D; margin-right:8px;'></i> 3. Nomenclature Financière & Matériaux (BOM)", unsafe_allow_html=True)
         st.write("Détail du coût de revient industriel et nomenclature pour la configuration optimale choisie :")
         
-        # Calculs de la BOM
+        # Calculs de la BOM réels basés sur la fonction partagée
         n_racks = math.ceil(best_conf['N_Modules'] / 20.0)
-        m_al_total = best_conf['M_Al_Total_kg']
-        m_pcm_total_filled = best_conf['M_PCM_Required_kg'] * 1.10
-        n_bouchons = int(best_conf['N_Modules'] * 2)
-        n_bagues = int(best_conf['N_Modules'] * 2)
-        n_barres_flexion = int(n_racks * 3)
-        c_al = m_al_total * 1500.0
-        c_pcm = m_pcm_total_filled * 400.0
-        c_bouchons = n_bouchons * 500.0
-        c_bagues = n_bagues * 100.0
-        c_cadres = n_racks * 12000.0
-        c_barres_flexion = n_barres_flexion * 1500.0
-        c_quinc = n_racks * 3000.0
-        c_mo = n_racks * 20000.0
-        c_vent = 15000.0 if best_conf['Ventilation'] == "ON" else 0.0
-        c_total_bom = c_al + c_pcm + c_bouchons + c_bagues + c_cadres + c_barres_flexion + c_quinc + c_mo + c_vent
+        bom_costs = calculate_system_costs(
+            best_conf['M_Al_Total_kg'],
+            best_conf['M_PCM_Required_kg'],
+            best_conf['N_Modules'],
+            n_racks,
+            best_conf['Ventilation']
+        )
+        c_al = bom_costs["c_al"]
+        c_pcm = bom_costs["c_pcm"]
+        n_bouchons = bom_costs["n_bouchons"]
+        c_bouchons = bom_costs["c_bouchons"]
+        n_bagues = bom_costs["n_bagues"]
+        c_bagues = bom_costs["c_bagues"]
+        c_cadres = bom_costs["c_cadres"]
+        n_barres_metal = bom_costs["n_barres_metal"]
+        c_barres_metal = bom_costs["c_barres_metal"]
+        n_barres_pehd = bom_costs["n_barres_pehd"]
+        c_barres_pehd = bom_costs["c_barres_pehd"]
+        c_quinc = bom_costs["c_quinc"]
+        c_mo = bom_costs["c_mo"]
+        c_vent = bom_costs["c_vent"]
+        c_electrical_total = bom_costs["c_electrical_total"]
+        c_total_bom = bom_costs["c_total"]
 
         st.markdown(f"""
         <table style="width:100%; border-collapse: collapse; font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #1B365D; border: 1px solid #E2E8F0;">
@@ -1297,25 +1395,25 @@ else:
             <tbody>
                 <tr style="background-color: #FFFFFF;">
                     <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Profilés Extrudés Aluminium</td>
-                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{m_al_total:.1f} kg (Tubes avec 8 ailettes internes & 8 externes)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{best_conf['M_Al_Total_kg']:.1f} kg (Tubes avec 8 ailettes internes & 8 externes)</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">1 500 DA / kg</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_al:,.0f} DA</td>
                 </tr>
                 <tr style="background-color: #F8FAFC;">
                     <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Paraffine Organique (MCP)</td>
-                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{m_pcm_total_filled:.1f} kg (Chaleur latente 200 kJ/kg, marge 10%)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{best_conf['M_PCM_Required_kg']*1.10:.1f} kg (Chaleur latente 200 kJ/kg, marge 10%)</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">400 DA / kg</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_pcm:,.0f} DA</td>
                 </tr>
                 <tr style="background-color: #FFFFFF;">
                     <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Bouchons M16 à épaulement</td>
-                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_bouchons} pièces (Usinées pour taraudage & étanchéité de soudage)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_bouchons} pièces (Usinées pour taraudage & étanchéité de soudage - 1 par tube)</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">500 DA / pc</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_bouchons:,.0f} DA</td>
                 </tr>
                 <tr style="background-color: #F8FAFC;">
                     <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Bagues d'isolation EPDM</td>
-                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_bagues} pièces (Shore 70A, longueur 40mm pour les extrémités lisses)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_bagues} pièces (Shore 70A, longueur 40mm pour les extrémités lisses - 2 par tube)</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">100 DA / pc</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_bagues:,.0f} DA</td>
                 </tr>
@@ -1326,28 +1424,40 @@ else:
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_cadres:,.0f} DA</td>
                 </tr>
                 <tr style="background-color: #F8FAFC;">
-                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Barres anti-flexion (PE-HD)</td>
-                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_barres_flexion} pièces (Usinées sur mesure, longueur 2m à mi-portée)</td>
-                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">1 500 DA / pc</td>
-                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_barres_flexion:,.0f} DA</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Traverses de Renfort Acier</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_barres_metal} pièces (Acier structurel à mi-portée pour anti-flexion)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">2 500 DA / pc</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_barres_metal:,.0f} DA</td>
                 </tr>
                 <tr style="background-color: #FFFFFF;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Patins d'Isolation PE-HD</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_barres_pehd} pièces (Garde-fou en plastique au-dessus des renforts)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">1 500 DA / pc</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_barres_pehd:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #F8FAFC;">
                     <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Quincaillerie & Suspension M14</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_racks} lot(s) (4 tiges filetées M14 d'un mètre, écrous et rondelles)</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">3 000 DA / lot</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_quinc:,.0f} DA</td>
                 </tr>
-                <tr style="background-color: #F8FAFC;">
+                <tr style="background-color: #FFFFFF;">
                     <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Main d'œuvre & Remplissage (TIG)</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0;">{n_racks} lot(s) (Forfait assemblage, soudage et remplissage paraffine)</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">20 000 DA / lot</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_mo:,.0f} DA</td>
                 </tr>
-                <tr style="background-color: #FFFFFF; font-style: italic;">
+                <tr style="background-color: #F8FAFC; font-style: italic;">
                     <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold;">Surcoût Ventilation Active (Optionnelle)</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0;">Système de ventilation forcée et onduleur de secours</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">Forfait</td>
                     <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold;">{c_vent:,.0f} DA</td>
+                </tr>
+                <tr style="background-color: #FFFFFF;">
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-weight: bold; color: #29B6D8;">Système Électrique & Automatisation</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; font-size: 12px; color: #555;">Automate Siemens S7-1200 + IHM (85k), Onduleur & Batterie LiFePO4 (65k), Sondes PT100 (25k), Coffret Électrique (45k), Câblage & Programmation (50k)</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right;">Forfait Projet</td>
+                    <td style="padding: 10px; border: 1px solid #E2E8F0; text-align: right; font-weight: bold; color: #29B6D8;">{c_electrical_total:,.0f} DA</td>
                 </tr>
                 <tr style="background-color: #E2E8F0; font-weight: bold; font-size: 15px;">
                     <td style="padding: 12px; border: 1px solid #CBD5E1;" colspan="2">TOTAL GÉNÉRAL DU SYSTÈME (CAPEX)</td>
@@ -1453,8 +1563,22 @@ else:
 
     # --- ONGLET 5: ÉTUDE ÉLECTRIQUE & SECOURS ---
     with tab5:
-        st.markdown("### <i class='fa-solid fa-bolt' style='color:#29B6D8; margin-right:8px;'></i> Étude Électrique & Système de Secours (Onduleur / UPS)", unsafe_allow_html=True)
-        st.write("Cet onglet présente le bilan des puissances électriques de la ventilation forcée et le dimensionnement de l'onduleur de secours (UPS) requis en cas de panne de secteur.")
+        st.markdown("### <i class='fa-solid fa-bolt' style='color:#29B6D8; margin-right:8px;'></i> Dossier d'Étude Électrotechnique & Automatisation", unsafe_allow_html=True)
+        st.write("Ce dossier technique présente l'architecture d'instrumentation, le schéma électrique AutoCAD (commande S7-1200 / puissance 400V) et la logique de décision Grafcet rédigés par **ZANE Mohamed Elamine**.")
+
+        # Summary Case study laiterie Soummam
+        st.markdown("""
+        <div style="background-color: #EBF5FB; padding: 15px; border-radius: 8px; border-left: 5px solid #2980B9; margin-bottom: 20px;">
+            <h5 style="margin-top:0; color:#1B4F72;"><i class="fa-solid fa-industry"></i> Cas d'usage de référence : Laiterie Soummam (Algérie)</h5>
+            <p style="margin:0; font-size:0.95rem; color:#2C3E50;">
+                L'infrastructure de stockage froid de la laiterie Soummam illustre parfaitement notre besoin industriel :
+                un volume total de <b>20 000 m³</b> réparti sur 110 chambres froides et alimentant 1 200 camions frigorifiques à travers les 58 wilayas.
+                Le contrôle-commande intelligent de KryoDrop permet de décarboner cette logistique et d'effacer les pics électriques.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        col_elec1, col_elec2 = st.columns(2)
         
         n_modules_ceil = math.ceil(best_conf['N_Modules'])
         n_fans = n_modules_ceil * 2 # 2 ventilateurs de 15W par module de 2m
@@ -1462,9 +1586,7 @@ else:
         required_ups_energy_wh = total_fan_power * autonomy_target
         battery_capacity_ah_12v = required_ups_energy_wh / 12.0
         battery_capacity_ah_48v = required_ups_energy_wh / 48.0
-        
-        col_elec1, col_elec2 = st.columns(2)
-        
+
         with col_elec1:
             st.markdown(f"""
             ##### 1. Bilan de Puissance des Ventilateurs
@@ -1485,9 +1607,56 @@ else:
               * Sous une tension de **12 V** : **`{battery_capacity_ah_12v:.1f} Ah`**
               * Sous une tension de **48 V** : **`{battery_capacity_ah_48v:.1f} Ah`**
             * **Spécifications recommandées pour l'UPS :**
-              * **Type de batterie :** **LiFePO4 (Lithium-Fer-Phosphate)**. Elles supportent les cycles de décharge profonde (80-90% DoD), conservent une longue durée de vie en température de local technique, et sont plus sécurisées que les batteries Plomb ou Lithium-Ion standards.
-              * **Technologie :** Onduleur Off-Line ou Line-Interactive de **1000 VA**, largement suffisant pour la charge inductive des ventilateurs.
+              * **Type de batterie :** **LiFePO4 (Lithium-Fer-Phosphate)** (longue durée de vie, 80-90% DoD).
+              * **Technologie :** Onduleur Off-Line ou Line-Interactive de **1000 VA**.
             """, unsafe_allow_html=True)
+
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+
+        # 3. Choix technologique compresseur et instrumentation
+        st.markdown("#### <i class='fa-solid fa-microchip' style='color:#29B6D8;'></i> Choix Technologiques & Instrumentation", unsafe_allow_html=True)
+        col_tech1, col_tech2 = st.columns(2)
+        with col_tech1:
+            st.markdown("""
+            ##### Technologie du Compresseur
+            * **Technologie retenue :** Compresseur **Scroll** (Bitzer, Copeland, Danfoss).
+            * **Plage de puissance requise :** **1.5 kW à 3.5 kW**, optimale pour la technologie Scroll en froid positif et négatif.
+            * **Argumentaire :** Les compresseurs Scroll offrent un excellent rendement volumétrique, un faible niveau de vibrations (préservant les suspentes alu du MCP), et une grande tolérance aux démarrages fréquents sous régulation PID.
+            """)
+        with col_tech2:
+            st.markdown("""
+            ##### Architecture d'Instrumentation
+            * **Capteurs Thermiques :** Sondes **PT100 (RTD class A)** placées dans le bain de MCP (suivi du SOC) et dans les flux d'air d'entrée/sortie de l'évaporateur.
+            * **Analyseur de Réseau :** Mesureur de puissance et de tension triphasé sur l'alimentation générale de la laiterie pour détecter en temps réel les hausses tarifaires (HP) et les micro-coupures de courant.
+            * **Contrôle-Commande :** Automate **Siemens S7-1200** avec modules d'extension d'entrées analogiques.
+            """)
+
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+
+        # 4. Schéma AutoCAD
+        st.markdown("#### <i class='fa-solid fa-file-pdf' style='color:#29B6D8;'></i> Schéma Électrique de Principe (AutoCAD)", unsafe_allow_html=True)
+        st.write("Le schéma électrique ci-dessous représente le circuit de commande de l'automate Siemens S7-1200 et le circuit de puissance triphasé 400V pour le compresseur Scroll et les ventilateurs.")
+        
+        # Display converted AutoCAD PNG
+        if os.path.exists("autocad_schema_page_1.png"):
+            st.image("autocad_schema_page_1.png", caption="Schéma Électrique AutoCAD - Volet Électrotechnique S7-1200 & Compresseur Scroll 400V", use_container_width=True)
+        else:
+            st.warning("Image du schéma AutoCAD non trouvée. Veuillez vérifier que le fichier 'autocad_schema_page_1.png' existe.")
+
+        st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
+
+        # 5. Grafcet Logique de Décision (Version Finale)
+        st.markdown("#### <i class='fa-solid fa-diagram-project' style='color:#29B6D8;'></i> Logique de Régulation - Grafcet de Commande Final", unsafe_allow_html=True)
+        st.write("Le Grafcet ci-dessous formalise les 4 états de fonctionnement du système de stockage thermique MCP (Veille, Charge, Délestage, Effacement) et les transitions prioritaires associées.")
+        
+        # Display the HTML Grafcet in an iframe
+        if os.path.exists("grafcet_mcp_final.html"):
+            with open("grafcet_mcp_final.html", "r", encoding="utf-8") as f:
+                grafcet_html_content = f.read()
+            import streamlit.components.v1 as components
+            components.html(grafcet_html_content, height=620, scrolling=True)
+        else:
+            st.warning("Fichier 'grafcet_mcp_final.html' non trouvé.")
 
     # --- ONGLET 6: ÉTUDE BUDGÉTAIRE & RENTABILITÉ ---
     with tab6:
