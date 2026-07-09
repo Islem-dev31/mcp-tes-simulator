@@ -535,11 +535,11 @@ for d_cyl_mm in dia_opts:
                 continue # Rejeter la configuration car non fabricable
             # -------------------------------------------------------------
             
-            # Exclure dynamiquement les configurations non physiques ou ne respectant pas le critère anti-givre (50 mm min aux pointes d'ailettes externes)
+            # Exclure dynamiquement les configurations non physiques ou ne respectant pas le critère anti-givre (12 mm min aux pointes d'ailettes d'un même tube)
             if n_fins > 0:
                 spacing_ext_tip_check = (math.pi * (d_cyl_mm + 2.0 * l_fin_mm) - n_fins * t_fin * 1000.0) / n_fins
                 spacing_int_base_check = (math.pi * d_inner * 1000.0 - n_fins * t_fin * 1000.0) / n_fins
-                if spacing_ext_tip_check < 50.0 or spacing_int_base_check <= 0.0:
+                if spacing_ext_tip_check < 12.0 or spacing_int_base_check <= 0.0:
                     continue
                 
             current_fin_thickness = 0.0 if n_fins == 0 else t_fin
@@ -670,16 +670,18 @@ for d_cyl_mm in dia_opts:
                             irr = 300.0  # Rentabilité exceptionnellement élevée
                     
                     # Calcul de l'encombrement au plafond (Q19)
-                    # Chaque cylindre a une largeur de d_cyl + 2*l_fin + 50mm d'espacement de sécurité
+                    # Chaque cylindre a une largeur de d_cyl + 2*l_fin + 50mm d'espacement de sécurité (0.05 m)
                     # Et une longueur utile l_cyl
                     area_proj_single = (d_cyl + 2.0 * l_fin + 0.05) * l_cyl
-                    ceiling_occupancy_pct = (math.ceil(n_modules) * area_proj_single) / area_floor * 100.0
+                    # Les tubes sont empilés par racks de 20 (configuration 7-6-7)
+                    n_racks = math.ceil(n_modules / 20.0)
+                    # L'encombrement au plafond est basé sur la projection au sol des racks (7 tubes de large par rack)
+                    ceiling_occupancy_pct = (n_racks * 7.0 * area_proj_single) / area_floor * 100.0
                     
-                    # Calcul du nombre de suspentes M10 requises (Q20)
-                    # Charge max autorisée de 300 kg par suspente avec un coefficient de sécurité de 3
-                    # Poids total = masse aluminium + masse MCP avec marge de dilatation
+                    # Calcul du nombre de suspentes M14 requises (Q20)
+                    # Chaque rack de 20 tubes est suspendu de manière isostatique par 4 tiges filetées M14 aux angles
                     total_mass_kg = m_al_total + m_pcm_required * 1.10
-                    n_suspentes = math.ceil(total_mass_kg / 300.0)
+                    n_suspentes = n_racks * 4
                     
                     # Score d'optimisation basé sur la performance d'été (garantissant un choix robuste)
                     score_da = t_autonomy_summer / cout_total if cout_total > 0 else 0
@@ -832,13 +834,14 @@ else:
             
         with col_dims2:
             occupancy_style = "color:#E74C3C; font-weight:bold;" if best_conf['Ceiling_Occupancy_Pct'] > 100.0 else "color:#2ECC71; font-weight:bold;"
+            n_racks_opt = math.ceil(best_conf['N_Modules'] / 20.0)
             st.markdown(f"""
             <div style="background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; padding: 15px; border-radius: 8px; font-family: sans-serif; font-size: 14px;">
                 <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
                     <li><b>Masse totale d'Aluminium</b> : <code>{best_conf['M_Al_Total_kg']:,.1f} kg</code> (Poids propre de la structure métallique)</li>
                     <li><b>Volume liquide MCP requis</b> : <code>{best_conf['M_PCM_Required_kg'] * 1.10 / config.RHO_PCM * 1000:,.1f} Litres</code> (dilaté à 10%)</li>
                     <li><b>Ciel gazeux (sécurité dilatation)</b> : <code>{empty_space_opt} %</code></li>
-                    <li><b>Points d'ancrage requis (suspentes M10)</b> : <code>{int(best_conf['N_Suspentes'])} suspentes</code> (Charge max 300kg/tige)</li>
+                    <li><b>Points d'ancrage requis (suspentes M14)</b> : <code>{int(best_conf['N_Suspentes'])} suspentes</code> ({n_racks_opt} rack(s) suspendu(s) par 4 tiges M14 chacun)</li>
                     <li><b>Encombrement au plafond</b> : <span style="{occupancy_style}">{best_conf['Ceiling_Occupancy_Pct']:.1f} %</span> de la surface de plafond</li>
                     <li><b>Besoin Frigorifique de Pointe</b> : <code>{q_load_total:,.1f} W</code> (Pertes: <code>{q_wall:,.0f}W</code> Parois, <code>{q_infiltration:,.0f}W</code> Infiltrations, <code>{q_product:,.0f}W</code> Produit)</li>
                 </ul>
@@ -965,7 +968,10 @@ else:
         
         total_mass_opt = best_conf['M_Al_Total_kg'] + best_conf['M_PCM_Required_kg'] * 1.10
         f_total_opt = total_mass_opt * 9.81
-        f_rod_opt = f_total_opt / 4.0
+        n_racks_opt = math.ceil(best_conf['N_Modules'] / 20.0)
+        n_suspentes_opt = n_racks_opt * 4
+        # Charge par suspente en divisant par le nombre total réel de tiges filetées M14
+        f_rod_opt = f_total_opt / n_suspentes_opt
         f_max_rod_opt = f_rod_opt * 1.5
         stress_rod_opt = f_max_rod_opt / 115.0 # M14 tensile area is 115 mm2
         sf_4_6 = 240.0 / stress_rod_opt
@@ -978,7 +984,7 @@ else:
             ##### 1. Calcul Analytique des Tiges Filetées M14
             * **Masse totale de la batterie optimale (remplie + marge 10%) :** **`{total_mass_opt:.1f} kg`**
             * **Poids total en traction pure (charge statique) :** `{f_total_opt:.1f} N`
-            * **Nombre de suspentes :** `4` tiges filetées aux angles du cadre
+            * **Nombre de suspentes :** `{n_suspentes_opt}` tiges filetées M14 aux angles des cadres (`{n_racks_opt}` rack(s) de 20 tubes)
             * **Charge moyenne par suspente :** `{f_rod_opt:.1f} N` (soit `{f_rod_opt/9.81:.1f} kg`)
             * **Charge de calcul maximale (facteur d'excentricité / déséquilibre de 1.5) :** **`{f_max_rod_opt:.1f} N`** (soit `{f_max_rod_opt/9.81:.1f} kg`)
             * **Section résistante de la tige M14 ($A_s$) :** `115 mm²`
